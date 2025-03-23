@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "13643488551",
+    "project_id": "acitrack",
+    "storage_bucket": "acitrack.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:13643488551:android:0f5cb15a0b797c117bdd02",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCNe7KkhYyP9YsBcUWLWH6ovxWjyJ1zR4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

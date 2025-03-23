@@ -1,0 +1,24 @@
+
+{
+  "settings": "Configuración",
+  "darkMode": "Modo Oscuro",
+  "enableDarkTheme": "Activar tema oscuro para la aplicación",
+  "display": "Pantalla",
+  "accessibility": "Accesibilidad",
+  "fontSize": "Tamaño de Fuente",
+  "highContrast": "Alto Contraste",
+  "increaseContrast": "Aumentar el contraste para mejor visibilidad",
+  "reduceMotion": "Reducir Movimiento",
+  "minimizeAnimations": "Minimizar animaciones y efectos de movimiento",
+  "language": "Idioma",
+  "selectLanguage": "Seleccionar Idioma",
+  "privacy": "Privacidad",
+  "notifications": "Notificaciones",
+  "enableNotifications": "Activar notificaciones push",
+  "cookies": "Cookies",
+  "allowCookies": "Permitir cookies para una mejor experiencia",
+  "locationServices": "Servicios de Ubicación", 
+  "allowLocation": "Permitir que la aplicación acceda a tu ubicación",
+  "cancel": "Cancelar",
+  "pixels": "{count} px"
+}
