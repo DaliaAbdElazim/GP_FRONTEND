@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/screens/profile_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   @override
@@ -37,7 +38,8 @@ class WelcomeScreen extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushReplacementNamed(context, '/home');
+               
+                Navigator.pushReplacementNamed(context, '/profile');
               },
               child: Text('Continue as Guest'),
               style: ElevatedButton.styleFrom(

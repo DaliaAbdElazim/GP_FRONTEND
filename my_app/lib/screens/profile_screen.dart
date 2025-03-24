@@ -12,6 +12,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   bool _isLoggedIn = false;
+  bool _isAnonymous = false;
   String _userName = '';
   String _userEmail = '';
 
@@ -28,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       bool isLoggedIn = await SessionManager.isLoggedIn();
+      bool isAnonymous = await SessionManager.isAnonymous();
 
       if (isLoggedIn) {
         // Get current user from Firebase
@@ -36,12 +38,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (currentUser != null) {
           setState(() {
             _isLoggedIn = true;
+            _isAnonymous = currentUser.isAnonymous;
             _userEmail = currentUser.email ?? 'No email provided';
-            _userName = currentUser.displayName ?? 'User';
-
-            // If display name is not set, try to get name from shared preferences
-            if (currentUser.displayName == null) {
-              _getUserNameFromPrefs();
+            
+            if (_isAnonymous) {
+              _userName = 'Guest User';
+            } else {
+              _userName = currentUser.displayName ?? 'User';
+              // If display name is not set, try to get name from shared preferences
+              if (currentUser.displayName == null) {
+                _getUserNameFromPrefs();
+              }
             }
           });
         } else {
@@ -49,17 +56,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           await SessionManager.clearSession();
           setState(() {
             _isLoggedIn = false;
+            _isAnonymous = false;
           });
         }
       } else {
         setState(() {
           _isLoggedIn = false;
+          _isAnonymous = false;
         });
       }
     } catch (e) {
       print("Error checking login status: $e");
       setState(() {
         _isLoggedIn = false;
+        _isAnonymous = false;
       });
     } finally {
       setState(() {
@@ -81,16 +91,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout(BuildContext context) async {
     try {
-      await SessionManager.logout(context);
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      // Navigate to login screen
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/welcome',
-        (Route<dynamic> route) => false,
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(child: CircularProgressIndicator());
+        },
       );
+      
+      await SessionManager.logout(context);
+      
+      // Navigator pop is handled in the SessionManager.logout method
     } catch (e) {
       // Close loading dialog if still showing
       Navigator.of(context, rootNavigator: true).pop();
@@ -103,21 +115,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _loginAsGuest(BuildContext context) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(child: CircularProgressIndicator());
+        },
+      );
+      
+      bool success = await SessionManager.loginAnonymously();
+      
+      // Close loading dialog
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      if (success) {
+        // Refresh the profile screen
+        _checkLoginStatus();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Guest login failed. Please try again.')),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still showing
+      Navigator.of(context, rootNavigator: true).pop();
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Guest login failed. Please try again.')),
+      );
+      print("Error during guest login: $e");
+    }
+  }
+
+  // Navigate to login screen for account linking
+  void _navigateToLogin(BuildContext context) {
+    // Pass a parameter to indicate we're coming from an anonymous account
+    Navigator.pushNamed(
+      context, 
+      '/login',
+      arguments: {'fromAnonymous': true},
+    );
+  }
+
+  // Navigate to registration screen for account creation
+  void _navigateToRegistration(BuildContext context) {
+    // Pass a parameter to indicate we're coming from an anonymous account
+    Navigator.pushNamed(
+      context, 
+      '/registration',
+      arguments: {'fromAnonymous': true},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
       title: 'Profile',
       currentRoute: '/profile',
-      body:
-          _isLoading
-              ? Center(child: CircularProgressIndicator())
-              : Padding(
-                padding: EdgeInsets.all(16.0),
-                child:
-                    _isLoggedIn
-                        ? _buildLoggedInProfile(context)
-                        : _buildGuestProfile(context),
-              ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: EdgeInsets.all(16.0),
+              child: _isLoggedIn
+                  ? (_isAnonymous 
+                      ? _buildAnonymousProfile(context)
+                      : _buildLoggedInProfile(context))
+                  : _buildGuestProfile(context),
+            ),
     );
   }
 
@@ -144,7 +212,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           trailing: Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {
             // Edit profile action
-            
             Navigator.pushNamed(context, '/edit-profile');
           },
         ),
@@ -174,6 +241,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildAnonymousProfile(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(height: 20),
+        CircleAvatar(
+          radius: 60,
+          backgroundColor: Colors.amber.shade100,
+          child: Icon(Icons.person, size: 80, color: Colors.amber),
+        ),
+        SizedBox(height: 20),
+        Text(
+          'Guest User',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        Text('Anonymous account', style: TextStyle(fontSize: 16, color: Colors.grey)),
+        SizedBox(height: 30),
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Create an Account',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Sign up to save your progress and access all features.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+              SizedBox(height: 15),
+              ElevatedButton(
+                onPressed: () => _navigateToRegistration(context),
+                child: Text('Create Account'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 40),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 20),
+        ListTile(
+          leading: Icon(Icons.login),
+          title: Text('Log in with existing account'),
+          trailing: Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () => _navigateToLogin(context),
+        ),
+        Divider(),
+        SizedBox(height: 20),
+        Text(
+          'You are currently browsing as a guest. Your progress will not be saved between sessions.',
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   Widget _buildGuestProfile(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -187,12 +318,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         SizedBox(height: 30),
         Text(
-          'Guest User',
+          'Welcome',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 10),
         Text(
-          'Create an account to save your progress',
+          'Create an account or continue as guest',
           style: TextStyle(fontSize: 16, color: Colors.grey),
           textAlign: TextAlign.center,
         ),
@@ -214,6 +345,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
           child: Text('Register'),
           style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+            minimumSize: Size(double.infinity, 50),
+          ),
+        ),
+        SizedBox(height: 20),
+        OutlinedButton(
+          onPressed: () => _loginAsGuest(context),
+          child: Text('Continue as Guest'),
+          style: OutlinedButton.styleFrom(
             padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
             minimumSize: Size(double.infinity, 50),
           ),

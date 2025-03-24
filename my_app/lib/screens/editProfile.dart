@@ -112,7 +112,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       
       // Prepare the data to send to backend
       Map<String, dynamic> userData = {
-        'uid': userId,
         'fullName': _fullNameController.text.trim(),
         'email': email,
         'phoneNumber': _phoneController.text.trim(),
@@ -120,7 +119,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       
       // Send update to backend
       // You can adjust the route and payload as needed
-     // await ApiService.put('user/$email', userData);
+      
+      await ApiService.post('user/$userId/update', userData);
       
     } catch (e) {
       print("Error syncing with backend: $e");

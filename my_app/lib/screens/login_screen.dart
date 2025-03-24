@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_app/utils/api_service.dart';
-//import 'package:my_app/widgets/navigation_drawer.dart';
 import 'package:my_app/utils/session_manager.dart';
-import 'package:my_app/widgets/navigation_drawer.dart'; // Add this import
+import 'package:my_app/widgets/navigation_drawer.dart';
 
 class LoginScreen extends StatefulWidget {
   static final String currentRoute = '/login';
@@ -19,12 +18,24 @@ class _LoginScreenState extends State<LoginScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isFromAnonymous = false;
 
   @override
   void initState() {
     super.initState();
     // Check if user is already logged in
     _checkLoginStatus();
+    
+    // Get arguments to check if coming from anonymous profile
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args.containsKey('fromAnonymous')) {
+        setState(() {
+          _isFromAnonymous = args['fromAnonymous'] == true;
+        });
+        debugPrint("Login from anonymous: $_isFromAnonymous");
+      }
+    });
   }
 
   Future<void> _checkLoginStatus() async {
@@ -33,8 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     bool isLoggedIn = await SessionManager.isLoggedIn();
-    if (isLoggedIn) {
-      // User is already logged in, redirect to home
+    bool isAnonymous = await SessionManager.isAnonymous();
+    
+    if (isLoggedIn && !isAnonymous) {
+      // User is already logged in (and not anonymous), redirect to home
       Navigator.pushReplacementNamed(context, '/home');
     }
 
@@ -50,6 +63,25 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Check if we're coming from an anonymous account
+      if (_isFromAnonymous) {
+        debugPrint("Signing in with existing account from anonymous mode");
+        bool success = await SessionManager.signInWithExisting(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+        
+        if (success) {
+          _isFromAnonymous=false;
+          debugPrint("Successfully signed in with existing account. Navigating to home.");
+          Navigator.pushReplacementNamed(context, '/home');
+          return;
+        } else {
+          throw Exception("Failed to sign in with existing account");
+        }
+      }
+      
+      // Standard login flow
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -59,19 +91,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (token != null && userCredential.user != null) {
         // Send data to backend
-        await sendUserDataToBackend(token);
+        try {
+          await sendUserDataToBackend(token);
+        } catch (e) {
+          debugPrint("Backend sign-in failed, but continuing: $e");
+        }
 
         // Save the session data
-        await SessionManager.saveUserSession(userCredential.user!, token);
+        await SessionManager.saveUserSession(userCredential.user!, token, true);
         
         // Navigate to home screen
         Navigator.pushReplacementNamed(context, '/home');
       }
+    } on FirebaseAuthException catch (e) {
+      debugPrint("Firebase Auth Error Code: ${e.code}");
+      debugPrint("Firebase Auth Error Message: ${e.message}");
+      setState(() {
+        _errorMessage = _getMessageFromErrorCode(e.code);
+      });
     } catch (e) {
       setState(() {
         _errorMessage = "Login failed. Please check your credentials.";
       });
-      print("Login error: $e");
+      debugPrint("Login error: $e");
     } finally {
       setState(() {
         _isLoading = false;
@@ -79,78 +121,157 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> sendUserDataToBackend(String? token) async {
-    final response = await http.post(
-      Uri.parse("https://cd16-102-44-10-244.ngrok-free.app/user/sign-in"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
+  // Helper method to provide user-friendly error messages
+  String _getMessageFromErrorCode(String errorCode) {
+    switch (errorCode) {
+      case 'user-not-found':
+        return 'No account found with this email address.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'too-many-requests':
+        return 'Too many failed login attempts. Try again later.';
+      case 'network-request-failed':
+        return 'Network error. Check your connection.';
+      default:
+        return 'An error occurred: $errorCode';
+    }
+  }
 
-    if (response.statusCode == 201) {
-      print("User successfully sign-in in backend");
-    } else {
-      print("Failed to sign-in user in backend: ${response.body}");
+  Future<void> sendUserDataToBackend(String? token) async {
+    try {
+      final response = await http.post(
+        Uri.parse("https://7e74-41-238-165-43.ngrok-free.app/user/sign-in"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 201) {
+        debugPrint("User successfully signed in on backend");
+      } else {
+        debugPrint("Failed to sign in user on backend: ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error sending sign-in data to backend: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
+      appBar: AppBar(
+        title: Text(_isFromAnonymous ? 'Sign in with Existing Account' : 'Login')
+      ),
       drawer: CustomNavigationDrawer(currentRoute: LoginScreen.currentRoute),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_isFromAnonymous) ...[
+                Container(
+                  padding: EdgeInsets.all(16),
+                  margin: EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Link to Existing Account',
+                        style: TextStyle(
+                          fontSize: 18, 
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Sign in with your existing account to save your current progress.',
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+                keyboardType: TextInputType.emailAddress,
               ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock),
+              SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                obscureText: true,
               ),
-              obscureText: true,
-            ),
-            if (_errorMessage != null) ...[
-              SizedBox(height: 10),
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Colors.red, fontSize: 14),
-              ),
-            ],
-            SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _signIn,
-              child:
+              if (_errorMessage != null) ...[
+                SizedBox(height: 10),
+                Text(
+                  _errorMessage!,
+                  style: TextStyle(color: Colors.red, fontSize: 14),
+                ),
+              ],
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _signIn,
+                child:
                   _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
-                      : Text('Login'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 15),
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(_isFromAnonymous ? 'Link Account' : 'Login'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 15),
+                ),
               ),
-            ),
-            SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/registration');
-              },
-              child: Text('Don\'t have an account? Register'),
-            ),
-          ],
+              SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context, 
+                    '/registration',
+                    arguments: _isFromAnonymous ? {'fromAnonymous': true} : null,
+                  );
+                },
+                child: Text('Don\'t have an account? Register'),
+              ),
+              if (_isFromAnonymous) ...[
+                SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Continue as guest'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
