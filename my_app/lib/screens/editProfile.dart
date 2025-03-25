@@ -120,7 +120,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Send update to backend
       // You can adjust the route and payload as needed
       
-      await ApiService.post('user/$userId/update', userData);
+      await ApiService.put('user/$userId/update', userData);
       
     } catch (e) {
       print("Error syncing with backend: $e");

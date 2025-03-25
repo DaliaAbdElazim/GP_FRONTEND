@@ -72,6 +72,13 @@ class CustomNavigationDrawer extends StatelessWidget {
             route: '/chatbot',
             isSelected: currentRoute == '/chatbot',
           ),
+          _buildDrawerItem(
+            context: context,
+            icon: Icons.settings,
+            title: 'notification',
+            route: '/notification',
+            isSelected: currentRoute == '/notification',
+          ),
           Divider(), // Add a divider before the logout button
           ListTile(
             leading: Icon(Icons.logout, color: Colors.red),

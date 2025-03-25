@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/utils/session_manager.dart';
 import '../widgets/base_screen.dart';
 import 'dart:io';
 import 'dart:async';
@@ -143,16 +144,19 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // Request permissions sequentially
   Future<void> _requestPermissions() async {
+
     // Request notification permission first
     final notificationGranted = await _permissionService.requestNotificationPermission();
     
     // If notification permission is granted, send FCM token to backend
-    if (notificationGranted) {
-      await _permissionService.sendFCMTokenToBackend();
-    }
     
     // Then request location permission
-    await _permissionService.requestLocationPermission();
+    final locationGranted =await _permissionService.requestLocationPermission();
+    
+    if (notificationGranted) {
+      final prefs = await SharedPreferences.getInstance();
+      await _permissionService.sendFCMTokenToBackend(prefs.getString(SessionManager.KEY_USER_ID));
+    }
   }
 
   // Mock camera functionality since we can't use image_picker

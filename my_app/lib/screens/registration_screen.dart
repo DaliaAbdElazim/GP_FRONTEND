@@ -50,7 +50,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     debugPrint("Attempting to send user data to backend");
     try {
       final response = await http.post(
-        Uri.parse("https://7e74-41-238-165-43.ngrok-free.app/user/sign-up"),
+        Uri.parse("https://58ae-41-238-165-43.ngrok-free.app/user/sign-up"),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",

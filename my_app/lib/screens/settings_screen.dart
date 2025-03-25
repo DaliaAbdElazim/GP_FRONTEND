@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:my_app/services/permission_service.dart';
+import 'package:my_app/utils/session_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -65,8 +66,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       isSendingToken = true;
     });
-   
-    final success = await _permissionService.sendFCMTokenToBackend();
+   final prefs = await SharedPreferences.getInstance();
+    final success = await _permissionService.sendFCMTokenToBackend(prefs.getString(SessionManager.KEY_USER_ID));
    
     setState(() {
       isSendingToken = false;

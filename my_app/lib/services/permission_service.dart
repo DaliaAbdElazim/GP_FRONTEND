@@ -128,7 +128,7 @@ Future<bool> initializeNotifications() async {
   }
  
   // Send FCM token to backend
-  Future<bool> sendFCMTokenToBackend({String? userId}) async {
+  Future<bool> sendFCMTokenToBackend(String? userId) async {
     try {
       final token = await getFCMToken();
       
@@ -137,7 +137,7 @@ Future<bool> initializeNotifications() async {
         return false;
       }
       print(token);
-      return await _fcmService.sendTokenToBackend(token, userId: userId);
+      return await _fcmService.sendTokenWithLocation(userId: userId);
     } catch (e) {
       print('Error sending FCM token to backend: $e');
       return false;
