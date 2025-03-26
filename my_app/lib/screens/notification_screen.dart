@@ -3,6 +3,7 @@ import 'package:my_app/services/fcm_service.dart';
 import 'package:my_app/Model/notification_model.dart';
 import 'package:my_app/Repository/notification_repository.dart';
 import 'package:intl/intl.dart';
+import 'package:my_app/services/notification_handler_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/base_screen.dart';
 
@@ -15,7 +16,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final NotificationRepository _repository = NotificationRepository();
- 
+  final NotificationHandler _notificationHandler = NotificationHandler(); 
   List _notifications = [];
 
   @override
@@ -36,14 +37,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _loadNotifications();
   }
 
-  void _openLocationInMaps(double latitude, double longitude) async {
-    final Uri url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      print('Could not launch $url');
-    }
-  }
 
 
   @override
@@ -86,8 +79,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ),
                       onTap: () {
+                       // print("longitude "+notification.longitude+" "+notification.latitude);
                         if (notification.latitude != null && notification.longitude != null) {
-                          _openLocationInMaps(notification.latitude, notification.longitude);
+                          _notificationHandler.openLocationInMaps(notification.latitude!, notification.longitude!);
                         } else {
                           print('Notification tapped: ${notification.title}');
                         }
