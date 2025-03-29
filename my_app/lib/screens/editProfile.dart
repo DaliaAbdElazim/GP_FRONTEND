@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/firebase_authentication/firebase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/base_screen.dart';
 import '../utils/session_manager.dart';
 import '../utils/api_service.dart';
+ // Import the FirebaseAuthService
 
 class EditProfileScreen extends StatefulWidget {
   @override
@@ -13,11 +15,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
   bool _isSaving = false;
+  final FirebaseAuthService _authService = FirebaseAuthService(); // Create instance
 
   // Form controllers
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  
+  // New controllers for password and email change
+  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _newEmailController = TextEditingController();
 
   @override
   void initState() {
@@ -30,6 +39,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    _newEmailController.dispose();
     super.dispose();
   }
 
@@ -119,7 +132,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       
       // Send update to backend
       // You can adjust the route and payload as needed
-      
       await ApiService.put('user/$userId/update', userData);
       
     } catch (e) {
@@ -128,6 +140,320 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // even if the backend sync fails
       _showMessage('Profile saved locally but failed to sync with server');
     }
+  }
+
+  // Change password dialog
+ Future<void> _showChangePasswordDialog() async {
+  _currentPasswordController.clear();
+  _newPasswordController.clear();
+  _confirmPasswordController.clear();
+
+  final _dialogFormKey = GlobalKey<FormState>(); // Add a separate key
+
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Change Password'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _dialogFormKey, // Assign the key here
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextFormField(
+                  controller: _currentPasswordController,
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your current password';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+                TextFormField(
+                  controller: _newPasswordController,
+                  decoration: InputDecoration(
+                    labelText: 'New Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a new password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value != _newPasswordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: Text('Change'),
+            onPressed: () async {
+              if (_dialogFormKey.currentState!.validate()) {
+                if (!mounted) return;
+
+                // Store the valid BuildContext before async calls
+                BuildContext dialogContext = context;
+
+                // Close the password input dialog
+                if (Navigator.canPop(dialogContext)) {
+                  Navigator.of(dialogContext).pop();
+                  print("Password input dialog closed");
+                }
+
+                // Show the loading dialog
+                _showLoadingDialog('Changing password...');
+                print("Loading dialog shown");
+
+                try {
+                  bool success = await _authService.changePassword(
+                    _currentPasswordController.text,
+                    _newPasswordController.text,
+                  );
+
+                  if (!mounted) return;
+
+                  print("Password changed successfully, dismissing loading dialog...");
+
+                  // Ensure loading dialog is dismissed only if it exists
+                  if (mounted && Navigator.canPop(context)) {
+                    Navigator.of(context).pop();
+                    print("Loading dialog dismissed");
+                  }
+
+                  if (success) {
+                    _showMessage('Password changed successfully');
+                  }
+                } catch (e) {
+                  print("Error changing password: $e");
+
+                  if (!mounted) return;
+
+                  // Dismiss loading dialog safely
+                  if (mounted && Navigator.canPop(context)) {
+                    Navigator.of(context).pop();
+                    print("Loading dialog dismissed after error");
+                  }
+
+                  _showMessage('Failed to change password: ${e.toString()}');
+                }
+  }
+}
+
+
+
+
+
+
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+  // Change email dialog
+  Future<void> _showChangeEmailDialog() async {
+    _currentPasswordController.clear();
+    _newEmailController.clear();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Change Email'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: GlobalKey<FormState>(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextFormField(
+                    controller: _currentPasswordController,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      border: OutlineInputBorder(),
+                    ),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _newEmailController,
+                    decoration: InputDecoration(
+                      labelText: 'New Email',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a new email';
+                      }
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Change'),
+              onPressed: () async {
+                // Validate form
+                final formState = Form.of(context) ;
+                if (formState.validate()) {
+                  try {
+                    Navigator.of(context).pop(); // Close dialog
+                    
+                    // Show loading indicator
+                    _showLoadingDialog('Changing email...');
+                    
+                    // Change email using Firebase
+                    bool success = await _authService.changeEmail(
+                      _currentPasswordController.text,
+                      _newEmailController.text,
+                    );
+                    
+                    if (success) {
+                      // Update email in SharedPreferences and UI
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString(SessionManager.KEY_EMAIL, _newEmailController.text);
+                      setState(() {
+                        _emailController.text = _newEmailController.text;
+                      });
+                    }
+                    
+                    // Hide loading indicator
+                    Navigator.of(context).pop();
+                    
+                  } catch (e) {
+                    // Hide loading indicator if showing
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    }
+                    _showMessage('Failed to change email: ${e.toString()}');
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Forgot password / Reset password functionality
+  Future<void> _showForgotPasswordDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Reset Password'),
+          content: Text('Send a password reset email to ${_emailController.text}?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Send'),
+              onPressed: () async {
+                try {
+                  Navigator.of(context).pop(); // Close dialog
+                  
+                  // Show loading indicator
+                  _showLoadingDialog('Sending reset email...');
+                  
+                  // Send password reset email
+                  await _authService.sendPasswordResetEmail(_emailController.text);
+                  
+                  // Hide loading indicator
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  // Hide loading indicator if showing
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
+                  _showMessage('Failed to send reset email: ${e.toString()}');
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text(message),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -174,15 +500,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             },
           ),
           SizedBox(height: 20),
-          TextFormField(
-            controller: _emailController,
-            decoration: InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.email),
-              enabled: false, // Email is read-only
-            ),
-            keyboardType: TextInputType.emailAddress,
+          // Email field with change button
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
+                    enabled: false, // Email is read-only
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+              ),
+              SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: _showChangeEmailDialog,
+                child: Text('Change'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(100, 56),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 20),
           TextFormField(
@@ -194,7 +535,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             keyboardType: TextInputType.phone,
           ),
+          SizedBox(height: 30),
+          
+          // Password management section
+          Divider(),
+          SizedBox(height: 10),
+          Text(
+            'Password Management',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: Icon(Icons.lock),
+                  label: Text('Change Password'),
+                  onPressed: _showChangePasswordDialog,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 15),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: Icon(Icons.password),
+                  label: Text('Reset Password'),
+                  onPressed: _showForgotPasswordDialog,
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 15),
+                  ),
+                ),
+              ),
+            ],
+          ),
           SizedBox(height: 40),
+          
+          // Save/Cancel buttons
           ElevatedButton(
             onPressed: _isSaving ? null : _saveProfile,
             child: _isSaving

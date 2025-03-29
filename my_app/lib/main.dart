@@ -2,6 +2,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:my_app/screens/contributions_screen.dart';
 import 'package:my_app/screens/editProfile.dart';
 import 'package:my_app/screens/notification_screen.dart';
 import 'package:my_app/screens/splash_screens.dart';
@@ -99,6 +100,7 @@ class MyApp extends StatelessWidget {
             '/contact': (context) => ContactScreen(),
             '/support': (context) => SupportScreen(),
             '/chatbot': (context) => ChatbotScreen(),
+            '/contributions': (context) => ContributionsScreen(),
             '/notification': (context) => NotificationsScreen(),
           },
           navigatorObservers: [

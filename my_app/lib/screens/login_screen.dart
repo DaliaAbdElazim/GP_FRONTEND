@@ -144,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> sendUserDataToBackend(String? token) async {
     try {
       final response = await http.post(
-        Uri.parse("https://58ae-41-238-165-43.ngrok-free.app/user/sign-in"),
+        Uri.parse("https://423c-154-176-181-242.ngrok-free.app/user/sign-in"),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",

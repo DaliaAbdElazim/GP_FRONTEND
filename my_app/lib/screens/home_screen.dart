@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/services/img_upload_service.dart';
 import 'package:my_app/utils/session_manager.dart';
+import 'package:path_provider/path_provider.dart';
 import '../widgets/base_screen.dart';
 import 'dart:io';
 import 'dart:async';
@@ -17,7 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final int _minImages = 3;
   final int _maxImages = 7;
   final PermissionService _permissionService = PermissionService();
-  
+  final UploadsService _uploadsService = UploadsService(); // Updated service
+  bool _isUploading = false;
   @override
   void initState() {
     super.initState();
@@ -41,31 +44,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
   void _showCameraPermissionDialog() {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Camera Permission Required'),
-        content: Text('To capture photos, you need to grant camera permission in your device settings.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _permissionService.openSettings();
-            },
-            child: Text('Open Settings'),
-          ),
-        ],
-      );
-    },
-  );
-}
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Camera Permission Required'),
+          content: Text('To capture photos, you need to grant camera permission in your device settings.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _permissionService.openSettings();
+              },
+              child: Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
   // Show the permissions dialog on first launch
   void _showPermissionsDialog() {
     showDialog(
@@ -115,7 +118,25 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-  
+    Future<File> _createSimulatedImageFile() async {
+    try {
+      // Get temporary directory
+      final tempDir = await getTemporaryDirectory();
+      
+      // Create a unique filename
+      final uniqueFileName = 'simulated_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final tempFile = File('${tempDir.path}/$uniqueFileName');
+
+      // For demonstration, we'll create a file with some content
+      // In a real app, you might want to generate or copy an actual image
+      await tempFile.writeAsBytes(List.generate(1024, (index) => index % 256));
+
+      return tempFile;
+    } catch (e) {
+      print('Error creating simulated image: $e');
+      rethrow;
+    }
+  }
   // Helper to build permission items in the dialog
   Widget _buildPermissionItem(IconData icon, String title, String description) {
     return Row(
@@ -160,39 +181,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Mock camera functionality since we can't use image_picker
-Future<void> _simulateCameraCapture() async {
-  if (_capturedImages.length >= _maxImages) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Maximum $_maxImages images allowed')),
-    );
-    return;
-  }
+  Future<void> _simulateCameraCapture() async {
+    if (_capturedImages.length >= _maxImages) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $_maxImages images allowed')),
+      );
+      return;
+    }
 
-  // Always check permission before capture - this handles "only this time" permissions
-  bool hasCameraPermission = await _permissionService.requestCameraPermission();
+    // Always check permission before capture
+    bool hasCameraPermission = await _permissionService.requestCameraPermission();
   
-  if (!hasCameraPermission) {
-    // Show dialog if permission denied
-    _showCameraPermissionDialog();
-    return;
-  }
+    if (!hasCameraPermission) {
+      // Show dialog if permission denied
+      _showCameraPermissionDialog();
+      return;
+    }
 
-  // Continue with camera capture if permission granted
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => Center(child: CircularProgressIndicator()),
-  );
-
-  await Future.delayed(Duration(seconds: 1));
-  Navigator.pop(context); // Close the loading dialog
-
-  setState(() {
-    _capturedImages.add(
-      File('simulated_image_${_capturedImages.length}.jpg'),
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator()),
     );
-  });
-}
+
+    try {
+      // Create a simulated image file
+      final simulatedImageFile = await _createSimulatedImageFile();
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Update state with the new image file
+      setState(() {
+        _capturedImages.add(simulatedImageFile);
+      });
+    } catch (e) {
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show error to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to capture image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
 
   void _removeImage(int index) {
@@ -201,7 +237,7 @@ Future<void> _simulateCameraCapture() async {
     });
   }
 
-  void _confirmImages() {
+ void _confirmImages() async {
     if (_capturedImages.length < _minImages) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please capture at least $_minImages images')),
@@ -209,148 +245,211 @@ Future<void> _simulateCameraCapture() async {
       return;
     }
 
-    // Navigate to confirmation screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => ConfirmationScreen(imageCount: _capturedImages.length),
-      ),
-    );
-  }
+    setState(() {
+      _isUploading = true;
+    });
 
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        BaseScreen(
-          title: 'Home',
-          currentRoute: '/home',
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.home, size: 100, color: Colors.blue),
-                SizedBox(height: 20),
-                Text(
-                  'Home Screen',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Welcome to the main screen of the application',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
-                SizedBox(height: 20),
-    
-                // Image preview grid
-                if (_capturedImages.isNotEmpty) ...[
-                  Container(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _capturedImages.length,
-                      itemBuilder: (context, index) {
-                        return Stack(
-                          children: [
-                            Container(
-                              margin: EdgeInsets.all(5),
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(5),
-                                color: Colors.grey[300],
-                              ),
-                              // Since we can't actually display the file, show a placeholder
-                              child: Center(
-                                child: Icon(
-                                  Icons.image,
-                                  size: 40,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: IconButton(
-                                icon: Icon(Icons.close, color: Colors.red),
-                                onPressed: () => _removeImage(index),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    '${_capturedImages.length} of $_maxImages images (min: $_minImages)',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  SizedBox(height: 20),
-                ],
-    
-                // Camera button
-                ElevatedButton.icon(
-                  onPressed: _simulateCameraCapture,
-                  icon: Icon(Icons.camera_alt),
-                  label: Text('Capture Photo'),
-                ),
-                SizedBox(height: 20),
-    
-                // Confirm button (only shown when there are images)
-                if (_capturedImages.isNotEmpty)
-                  ElevatedButton(
-                    onPressed: _confirmImages,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: Text('Confirm Images'),
-                  ),
-              ],
-            ),
+    try {
+      // Get user ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString(SessionManager.KEY_USER_ID);
+
+      if (userId == null) {
+        throw Exception('User ID not found');
+      }
+
+      // Get current location
+      final location = await _uploadsService.getCurrentLocation();
+
+      // Upload images to backend
+      final bool uploadResult = await _uploadsService.uploadImages(
+        userId: userId,
+        imageFiles: _capturedImages,
+        location: location,
+        isGuestUpload: false,
+      );
+
+      // Navigate to confirmation screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConfirmationScreen(
+            uploadResult: uploadResult,
           ),
         ),
-        
-        // Add the Floating Action Button for chatbot
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/chatbot');
-            },
-            backgroundColor: Colors.blue,
-            child: Icon(Icons.chat_bubble, color: Colors.white),
-            tooltip: 'Chat Assistant',
-          ),
+      );
+
+      // Clear captured images after successful upload
+      setState(() {
+        _capturedImages.clear();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
-      ],
-    );
+      );
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
   }
+ @override
+Widget build(BuildContext context) {
+  return Stack(
+    children: [
+      BaseScreen(
+        title: 'Home',
+        currentRoute: '/home',
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.home, size: 100, color: Colors.blue),
+              SizedBox(height: 20),
+              Text(
+                'Home Screen',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Welcome to the main screen of the application',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 20),
+
+              // Image preview grid
+              if (_capturedImages.isNotEmpty) ...[
+                Container(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _capturedImages.length,
+                    itemBuilder: (context, index) {
+                      return Stack(
+                        children: [
+                          Container(
+                            margin: EdgeInsets.all(5),
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(5),
+                              color: Colors.grey[300],
+                            ),
+                            // Since we can't actually display the file, show a placeholder
+                            child: Center(
+                              child: Icon(
+                                Icons.image,
+                                size: 40,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: IconButton(
+                              icon: Icon(Icons.close, color: Colors.red),
+                              onPressed: () => _removeImage(index),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  '${_capturedImages.length} of $_maxImages images (min: $_minImages)',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                SizedBox(height: 20),
+              ],
+
+              // Camera button
+              ElevatedButton.icon(
+                onPressed: _simulateCameraCapture,
+                icon: Icon(Icons.camera_alt),
+                label: Text('Capture Photo'),
+              ),
+              SizedBox(height: 20),
+
+              // Confirm button (only shown when there are images)
+              if (_capturedImages.isNotEmpty && !_isUploading)
+                ElevatedButton(
+                  onPressed: _confirmImages,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  child: Text('Confirm Images'),
+                ),
+
+              // Show loading indicator during upload
+              if (_isUploading)
+                CircularProgressIndicator(),
+            ],
+          ),
+        ),
+      ),
+      
+      // Floating Action Button
+      Positioned(
+        right: 16,
+        bottom: 16,
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.pushNamed(context, '/chatbot');
+          },
+          backgroundColor: Colors.blue,
+          child: Icon(Icons.chat_bubble, color: Colors.white),
+          tooltip: 'Chat Assistant',
+        ),
+      ),
+    ],
+  );
+}
 }
 
-// Confirmation screen that just shows a success message
 class ConfirmationScreen extends StatelessWidget {
-  final int imageCount;
+  final bool uploadResult;
 
-  const ConfirmationScreen({Key? key, required this.imageCount})
-    : super(key: key);
+  const ConfirmationScreen({
+    Key? key, 
+    required this.uploadResult
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    print(uploadResult);
+    final bool isSuccess = true;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Confirmed Images')),
+      appBar: AppBar(title: Text('Upload Results')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 80),
+            Icon(
+              isSuccess ? Icons.check_circle : Icons.warning,
+              color: isSuccess ? Colors.green : Colors.red, 
+              size: 80
+            ),
             SizedBox(height: 20),
             Text(
-              '$imageCount images confirmed!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              isSuccess ? 'Upload Successful' : 'Upload Failed',
+              style: TextStyle(
+                fontSize: 24, 
+                fontWeight: FontWeight.bold,
+                color: isSuccess ? Colors.green : Colors.red
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              uploadResult.toString(),
+              style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
             ),
             SizedBox(height: 40),
             ElevatedButton(

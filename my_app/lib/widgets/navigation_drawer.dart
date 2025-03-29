@@ -46,6 +46,13 @@ class CustomNavigationDrawer extends StatelessWidget {
           ),
           _buildDrawerItem(
             context: context,
+            icon: Icons.list_alt,  // Changed icon to represent contributions
+            title: 'Contributions',
+            route: '/contributions',
+            isSelected: currentRoute == '/contributions',
+          ),
+          _buildDrawerItem(
+            context: context,
             icon: Icons.settings,
             title: 'Settings',
             route: '/settings',
@@ -75,7 +82,7 @@ class CustomNavigationDrawer extends StatelessWidget {
           _buildDrawerItem(
             context: context,
             icon: Icons.settings,
-            title: 'notification',
+            title: 'Notification',
             route: '/notification',
             isSelected: currentRoute == '/notification',
           ),
