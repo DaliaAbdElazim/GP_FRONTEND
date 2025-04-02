@@ -15,9 +15,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _resetEmailController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
+  bool _isResettingPassword = false;
   String? _errorMessage;
+  String? _resetMessage;
   bool _isFromAnonymous = false;
 
   @override
@@ -161,6 +164,115 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Add the forgot password functionality
+  Future<bool> forgotPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      return true; // Return true on success
+    } catch (e) {
+      debugPrint("Password reset email error: $e");
+      return false; // Return false on failure
+    }
+  }
+
+  // Show the forgot password dialog
+  void _showForgotPasswordDialog() {
+    // Pre-fill with the email from the login form if available
+    _resetEmailController.text = _emailController.text;
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Reset Password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Enter your email address to receive a password reset link.'),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _resetEmailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    enabled: !_isResettingPassword,
+                  ),
+                  if (_resetMessage != null) ...[
+                    SizedBox(height: 16),
+                    Text(
+                      _resetMessage!,
+                      style: TextStyle(
+                        color: _resetMessage!.contains('sent') ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ]
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isResettingPassword ? null : () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: _isResettingPassword ? null : () async {
+                    if (_resetEmailController.text.trim().isEmpty) {
+                      setDialogState(() {
+                        _resetMessage = 'Please enter your email address.';
+                      });
+                      return;
+                    }
+                    
+                    setDialogState(() {
+                      _isResettingPassword = true;
+                      _resetMessage = null;
+                    });
+                    
+                    bool success = await forgotPassword(_resetEmailController.text.trim());
+                    
+                    setDialogState(() {
+                      _isResettingPassword = false;
+                      if (success) {
+                        _resetMessage = 'Password reset email sent. Please check your inbox.';
+                      } else {
+                        _resetMessage = 'Failed to send password reset email. Please try again.';
+                      }
+                    });
+                    
+                    // Close dialog after successful send after a short delay
+                    if (success) {
+                      Future.delayed(Duration(seconds: 2), () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        }
+                      });
+                    }
+                  },
+                  child: _isResettingPassword
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text('Send Reset Link'),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -248,15 +360,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context, 
-                    '/registration',
-                    arguments: _isFromAnonymous ? {'fromAnonymous': true} : null,
-                  );
-                },
-                child: Text('Don\'t have an account? Register'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context, 
+                        '/registration',
+                        arguments: _isFromAnonymous ? {'fromAnonymous': true} : null,
+                      );
+                    },
+                    child: Text('Don\'t have an account? Register'),
+                  ),
+                  TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    child: Text('Forgot Password?'),
+                  ),
+                ],
               ),
               if (_isFromAnonymous) ...[
                 SizedBox(height: 16),

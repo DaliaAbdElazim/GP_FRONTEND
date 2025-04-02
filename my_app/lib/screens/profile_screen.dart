@@ -215,16 +215,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Navigator.pushNamed(context, '/edit-profile');
           },
         ),
-        Divider(),
-        ListTile(
-          leading: Icon(Icons.lock),
-          title: Text('Change Password'),
-          trailing: Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            // Change password action
-            Navigator.pushNamed(context, '/change-password');
-          },
-        ),
+       // Divider(),
+        // ListTile(
+        //   leading: Icon(Icons.lock),
+        //   title: Text('Change Password'),
+        //   trailing: Icon(Icons.arrow_forward_ios, size: 16),
+        //   onTap: () {
+        //     // Change password action
+        //     Navigator.pushNamed(context, '/change-password');
+        //   },
+        // ),
         Divider(),
         SizedBox(height: 40),
         ElevatedButton(
