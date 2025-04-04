@@ -1,7 +1,9 @@
+import 'dart:io' show Platform;
+
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'fcm_service.dart';
-
+import 'package:permission_handler/permission_handler.dart';
 class PermissionService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   final FCMService _fcmService = FCMService();
@@ -67,7 +69,31 @@ Future<bool> initializeNotifications() async {
     return await Permission.notification.isGranted || await Permission.notification.isLimited;
 
   }
- 
+ Future<bool> requestGalleryPermission() async {
+    try {
+      // Different handling based on platform and API level
+      if (Platform.isAndroid) {
+        // For Android 13+ (API level 33+)
+        if ( await Permission.photos.request().isGranted) {
+          return true;
+        }
+        // For older Android versions
+        else if (await Permission.storage.request().isGranted) {
+          return true;
+        }
+      } 
+      // iOS handling
+      else if (Platform.isIOS) {
+        if (await Permission.photos.request().isGranted) {
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Error requesting gallery permission: $e');
+      return false;
+    }
+  }
   // Request location permission
   Future<bool> requestLocationPermission() async {
     var status = await Permission.location.request();
