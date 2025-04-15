@@ -1,20 +1,22 @@
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
-import 'package:mime/mime.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 
 // Data Transfer Objects (DTOs)
 class CreateUploadsDto {
   final String userId;
   final LocationDto location;
+  final List<String> imageUrls; // Store Firebase URLs
   final bool isGuestUpload;
 
   CreateUploadsDto({
     required this.userId,
     required this.location,
+    required this.imageUrls,
     this.isGuestUpload = false,
   });
 
@@ -22,6 +24,7 @@ class CreateUploadsDto {
     return {
       'userId': userId,
       'location': location.toJson(),
+      'imageUrls': imageUrls,
       'isGuestUpload': isGuestUpload,
     };
   }
@@ -63,12 +66,15 @@ class UploadResponse {
   final bool success;
   final String message;
   final List<String>? uploadedIds;
+  final List<String>? imageUrls;
 
   UploadResponse({
     required this.success,
     required this.message,
     this.uploadedIds,
+    this.imageUrls,
   });
+  
   factory UploadResponse.fromJson(Map<String, dynamic> json) {
     return UploadResponse(
       success: json['success'] ?? false,
@@ -76,14 +82,24 @@ class UploadResponse {
       uploadedIds: json['data'] != null 
         ? List<String>.from(json['data']['uploadedIds'] ?? [])
         : null,
+      imageUrls: json['data'] != null 
+        ? List<String>.from(json['data']['imageUrls'] ?? [])
+        : null,
     );
   }
 }
 
 class UploadsService {
   // Update this to your real backend URL
-  static const String baseUrl = 'https://76c1-196-137-48-30.ngrok-free.app';
+  static const String baseUrl = 'https://11a2-154-176-149-63.ngrok-free.app';
   static const int maxRetries = 2;
+  
+  // Use your specific Firebase Storage bucket
+  final FirebaseStorage _storage = FirebaseStorage.instanceFor(
+    bucket: 'gs://acitrack.firebasestorage.app'
+  );
+  
+  final Uuid _uuid = Uuid();
 
   // Method to get current location with improved error handling
   Future<LocationDto> getCurrentLocation() async {
@@ -131,6 +147,41 @@ class UploadsService {
     }
   }
 
+  // Upload a single image to Firebase Storage
+  Future<String?> _uploadToFirebaseStorage(File imageFile, String userId) async {
+    try {
+      // Generate a unique filename to avoid collisions
+      String fileName = '${_uuid.v4()}${path.extension(imageFile.path)}';
+      
+      // Reference to the storage location
+      Reference storageRef = _storage.ref().child('user_uploads/$userId/$fileName');
+      
+      // Upload the file with metadata
+      UploadTask uploadTask = storageRef.putFile(
+        imageFile,
+        SettableMetadata(
+          contentType: 'image/${path.extension(imageFile.path).substring(1)}', // jpg -> image/jpg
+          customMetadata: {
+            'uploadedBy': userId,
+            'uploadedAt': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
+      
+      // Wait for the upload to complete
+      await uploadTask;
+      
+      // Get the download URL
+      String downloadUrl = await storageRef.getDownloadURL();
+      print('File uploaded successfully. URL: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading file to Firebase Storage: ${e.toString()}');
+      return null;
+    }
+  }
+
+  // Main upload method - now uploads to Firebase first, then sends URLs to backend
   Future<UploadResponse> uploadImages({
     required String userId,
     required List<File> imageFiles,
@@ -138,64 +189,74 @@ class UploadsService {
     bool isGuestUpload = false,
   }) async {
     int retryCount = 0;
+    List<String> uploadedUrls = [];
     
+    // First, upload all images to Firebase Storage
+    for (var imageFile in imageFiles) {
+      String? downloadUrl = await _uploadToFirebaseStorage(imageFile, userId);
+      if (downloadUrl != null) {
+        uploadedUrls.add(downloadUrl);
+      } else {
+        // If any upload fails, return an error
+        return UploadResponse(
+          success: false,
+          message: 'Failed to upload one or more images to Firebase Storage',
+        );
+      }
+    }
+    
+    // If we couldn't upload any images, return error
+    if (uploadedUrls.isEmpty && imageFiles.isNotEmpty) {
+      return UploadResponse(
+        success: false,
+        message: 'Failed to upload any images to Firebase Storage',
+      );
+    }
+    
+    // Now send the metadata and URLs to the backend
     while (retryCount <= maxRetries) {
       try {
-        var request = http.MultipartRequest(
-          'POST', 
-          Uri.parse('$baseUrl/uploads')
-        );
-
         // Use safe values for coordinates
         double safeLat = location.latitude.isNaN ? 0.0 : location.latitude;
         double safeLng = location.longitude.isNaN ? 0.0 : location.longitude;
         
         print('Using location values - Latitude: $safeLat, Longitude: $safeLng');
 
-        // Add data fields directly (not as nested JSON)
-        request.fields['userId'] = userId;
-        request.fields['longitude'] = safeLng.toString();
-        request.fields['latitude'] = safeLat.toString();
-        request.fields['isGuestUpload'] = isGuestUpload.toString();
+        // Prepare the request body
+        final requestBody = {
+          'userId': userId,
+          'location': {
+            'longitude': safeLng,
+            'latitude': safeLat,
+          },
+          'imageUrls': uploadedUrls,
+          'isGuestUpload': isGuestUpload,
+        };
 
-        // Add image files
-        for (var imageFile in imageFiles) {
-          final mimeType = lookupMimeType(imageFile.path);
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'files', 
-              imageFile.path,
-              filename: path.basename(imageFile.path),
-              contentType: MediaType.parse(mimeType ?? 'application/octet-stream')
-            )
-          );
-        }
-
-        // Add headers
-        request.headers['Accept'] = 'application/json';
-
-        // Log request details for debugging
-        print('Sending upload request to: ${request.url}');
-        print('Fields: ${request.fields}');
-        print('Files count: ${request.files.length}');
-
-        // Send the request with timeout
-        var responseStream = await request.send().timeout(
+        print('Sending request to backend with data: ${json.encode(requestBody)}');
+        
+        // Send JSON request to backend
+        final response = await http.post(
+          Uri.parse('$baseUrl/uploads'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode(requestBody),
+        ).timeout(
           Duration(seconds: 30),
           onTimeout: () {
             throw TimeoutException('Request timed out');
           },
         );
         
-        // Get response body
-        var responseBody = await responseStream.stream.bytesToString();
-        print('Response status: ${responseStream.statusCode}');
-        print('Response body preview: ${responseBody.length > 100 ? responseBody.substring(0, 100) + "..." : responseBody}');
+        print('Response status: ${response.statusCode}');
+        print('Response body preview: ${response.body.length > 100 ? response.body.substring(0, 100) + "..." : response.body}');
         
         // Check if response is HTML (common error case)
-        if (responseBody.trim().startsWith('<html') || 
-            responseBody.trim().startsWith('<!DOCTYPE') ||
-            responseBody.contains('<head>')) {
+        if (response.body.trim().startsWith('<html') || 
+            response.body.trim().startsWith('<!DOCTYPE') ||
+            response.body.contains('<head>')) {
           
           print('Received HTML response instead of expected JSON');
           
@@ -208,26 +269,30 @@ class UploadsService {
             return UploadResponse(
               success: false,
               message: 'Server returned HTML instead of JSON. API endpoint may be unreachable.',
+              imageUrls: uploadedUrls, // Return URLs even if backend failed
             );
           }
         }
         
         try {
           // Parse the response JSON
-          var jsonResponse = json.decode(responseBody);
-          
-          if (responseStream.statusCode == 201 || responseStream.statusCode == 200) {
+          var jsonResponse = json.decode(response.body);
+          print('--------------------------------');
+          print(response.statusCode);
+          if (response.statusCode == 201 || response.statusCode == 200) {
             return UploadResponse(
               success: true,
               message: 'Upload successful',
               uploadedIds: jsonResponse['data']?['uploadedIds'] != null 
                 ? List<String>.from(jsonResponse['data']['uploadedIds'])
                 : [],
+              imageUrls: uploadedUrls,
             );
           } else {
             return UploadResponse(
               success: false,
-              message: jsonResponse['message'] ?? 'Upload failed with status ${responseStream.statusCode}',
+              message: jsonResponse['message'] ?? 'Upload failed with status ${response.statusCode}',
+              imageUrls: uploadedUrls, // Return URLs even if backend failed
             );
           }
         } catch (parseError) {
@@ -243,6 +308,7 @@ class UploadsService {
           return UploadResponse(
             success: false,
             message: 'Failed to parse server response. Received invalid data.',
+            imageUrls: uploadedUrls, // Return URLs even if backend failed
           );
         }
       } catch (e) {
@@ -252,6 +318,7 @@ class UploadsService {
           return UploadResponse(
             success: false,
             message: 'Network error: ${e.toString()}',
+            imageUrls: uploadedUrls, // Return URLs even if backend failed
           );
         }
         
@@ -265,15 +332,15 @@ class UploadsService {
     return UploadResponse(
       success: false,
       message: 'Upload failed after multiple attempts',
+      imageUrls: uploadedUrls, // Return URLs even if backend failed
     );
   }
 }
-  class TimeoutException implements Exception {
+
+class TimeoutException implements Exception {
   final String message;
   TimeoutException(this.message);
   
   @override
   String toString() => message;
 }
-
-  

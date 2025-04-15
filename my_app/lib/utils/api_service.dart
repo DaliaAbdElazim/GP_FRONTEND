@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:my_app/utils/session_manager.dart';
 
 class ApiService {
-  static const String BASE_URL = "https://76c1-196-137-48-30.ngrok-free.app/";
+  static const String BASE_URL = "https://11a2-154-176-149-63.ngrok-free.app/";
 
   // Generic GET request with authentication
   static Future<dynamic> get(String endpoint) async {
