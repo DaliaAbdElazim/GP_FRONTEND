@@ -37,9 +37,10 @@ class ChatbotScreen extends StatefulWidget {
 
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _textController = TextEditingController();
+  final FocusNode _textFieldFocusNode = FocusNode();
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: 'Hello! I\'m your virtual assistant. How can I help you today?',
+      text: '👋 Hi! I\'m Aidy, your first aid assistant. How can I help you today?',
       isUserMessage: false,
     ),
   ];
@@ -47,30 +48,40 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   bool _isLoading = false;
   bool _isRecording = false;
   late AudioRecorder _audioRecorder;
-  // Use AudioPlayer concrete class instead of abstract base class
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _currentRecordingPath;
   Map<String, bool> _playingAudio = {};
   final uuid = Uuid();
 
- @override
-void initState() {
-  super.initState();
-   _audioRecorder = AudioRecorder(); // Use AudioRecorder instead of Record
-  
-  // Listen for audio completion events
-  _audioPlayer.onPlayerComplete.listen((event) {
-    _updatePlayingState(null, false);
-  });
-}
+  @override
+  void initState() {
+    super.initState();
+    _audioRecorder = AudioRecorder();
+    
+    // Listen for audio completion events
+    _audioPlayer.onPlayerComplete.listen((event) {
+      _updatePlayingState(null, false);
+    });
+    
+    // Add post-frame callback to handle keyboard visibility
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Set up a listener for when the screen is tapped
+      _textFieldFocusNode.addListener(() {
+        if (_textFieldFocusNode.hasFocus) {
+          // This ensures the keyboard appears when the field gets focus
+        }
+      });
+    });
+  }
 
-@override
-void dispose() {
-  _textController.dispose();
-  _audioRecorder.dispose();
-  _audioPlayer.dispose();
-  super.dispose();
-}
+  @override
+  void dispose() {
+    _textController.dispose();
+    _textFieldFocusNode.dispose();
+    _audioRecorder.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +148,7 @@ void dispose() {
   Widget _buildChatMessage(ChatMessage message) {
     final String audioId = message.audioUrl ?? '';
     final bool isPlaying = _playingAudio[audioId] ?? false;
+    final TextDirection textDir = getTextDirection(message.text);
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.0),
@@ -154,45 +166,48 @@ void dispose() {
             ),
           SizedBox(width: message.isUserMessage ? 0 : 8.0),
           Flexible(
-            child: Container(
-              padding: EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color:
-                    message.isUserMessage ? Colors.blue[100] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(15.0),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.text, 
-                    style: TextStyle(fontSize: 16.0),
-                  ),
-                  if (message.audioUrl != null) ...[
-                    SizedBox(height: 8.0),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.blue[700],
+            child: Directionality(
+              textDirection: textDir,
+              child: Container(
+                padding: EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color:
+                      message.isUserMessage ? Colors.blue[100] : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      message.text, 
+                      style: TextStyle(fontSize: 16.0),
+                    ),
+                    if (message.audioUrl != null) ...[
+                      SizedBox(height: 8.0),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.blue[700],
+                            ),
+                            onPressed: () => _handleAudioPlayback(message.audioUrl!),
                           ),
-                          onPressed: () => _handleAudioPlayback(message.audioUrl!),
-                        ),
-                        Expanded(
-                          child: Text(
-                            isPlaying ? 'Playing audio...' : 'Voice message',
-                            style: TextStyle(
-                              fontSize: 12.0,
-                              color: Colors.grey[700],
+                          Expanded(
+                            child: Text(
+                              isPlaying ? 'Playing audio...' : 'Voice message',
+                              style: TextStyle(
+                                fontSize: 12.0,
+                                color: Colors.grey[700],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -205,6 +220,18 @@ void dispose() {
         ],
       ),
     );
+  }
+
+  TextDirection getTextDirection(String text) {
+    if (text.isEmpty) return TextDirection.ltr;
+    
+    // More robust Arabic detection
+    final RegExp arabicPattern = RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]');
+    final String trimmedText = text.trim();
+    if (trimmedText.isNotEmpty && arabicPattern.hasMatch(trimmedText[0])) {
+      return TextDirection.rtl;
+    }
+    return TextDirection.ltr;
   }
 
   Widget _buildTextComposer() {
@@ -227,25 +254,55 @@ void dispose() {
             ),
           ),
           SizedBox(width: 8.0),
-          // Text input field
+          // Text input field with multilingual support
           Flexible(
-            child: TextField(
-              controller: _textController,
-              decoration: InputDecoration(
-                hintText: 'Send a message',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25.0),
-                  borderSide: BorderSide.none,
+            child: GestureDetector(
+              onTap: () {
+                // Request focus to explicitly show keyboard when tapped anywhere in the text area
+                FocusScope.of(context).requestFocus(_textFieldFocusNode);
+              },
+              child: TextField(
+                controller: _textController,
+                focusNode: _textFieldFocusNode,
+                decoration: InputDecoration(
+                  hintText: 'Send a message',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
-                filled: true,
-                fillColor: Colors.grey[200],
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
+                // Enable proper multilingual support
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                // Use Directionality detection based on input
+                buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                  // This is a workaround to trigger rebuilds when text changes
+                  final direction = getTextDirection(_textController.text);
+                  return Directionality(
+                    textDirection: direction,
+                    child: Container(), // Empty container, just for rebuilding
+                  );
+                },
+                textDirection: getTextDirection(_textController.text),
+                textInputAction: TextInputAction.send,
+                showCursor: true,
+                onSubmitted: _isLoading ? null : _handleTextSubmit,
+                onTap: () {
+                  // Ensure keyboard shows when tapped
+                  FocusScope.of(context).requestFocus(_textFieldFocusNode);
+                },
+                onChanged: (text) {
+                  // Force rebuild to update text direction
+                  setState(() {});
+                },
+                enabled: !_isLoading && !_isRecording,
               ),
-              onSubmitted: _isLoading ? null : _handleTextSubmit,
-              enabled: !_isLoading && !_isRecording,
             ),
           ),
           SizedBox(width: 8.0),
@@ -270,6 +327,7 @@ void dispose() {
   }
 
   // Handle starting/stopping voice recording
+ // Handle starting/stopping voice recording
  void _handleVoiceRecording() async {
   if (_isRecording) {
     // Stop recording
@@ -367,6 +425,9 @@ void dispose() {
       _isLoading = true;
     });
 
+    // Hide keyboard after submitting
+    FocusScope.of(context).unfocus();
+
     try {
       // Make the API call for text
       final response = await fetchChatTextResponse(text);
@@ -426,13 +487,13 @@ void dispose() {
 
   // API call for text messages
   Future<ApiResponse> fetchChatTextResponse(String message) async {
-    final url = Uri.parse('https://4480-34-23-245-167.ngrok-free.app/chat-text');
+    final url = Uri.parse('https://cbce-34-69-71-123.ngrok-free.app/chat-text');
     
     try {
       final response = await http.post(
         url,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: jsonEncode({
           'text': message,
@@ -440,10 +501,10 @@ void dispose() {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         return ApiResponse(
           text: data['response'] ?? "I received your message but I'm not sure how to respond.",
-          audioUrl: data['audio_url'], // Assuming API provides audio_url field for voice response
+          audioUrl: data['audio_url'],
         );
       } else {
         throw Exception('Failed to get chat response');
@@ -454,8 +515,8 @@ void dispose() {
     }
   }
 
-Future<ApiResponse> fetchChatVoiceResponse(String audioFilePath) async {
-  final url = Uri.parse('https://4480-34-23-245-167.ngrok-free.app/chat-voice');
+  Future<ApiResponse> fetchChatVoiceResponse(String audioFilePath) async {
+  final url = Uri.parse('https://cbce-34-69-71-123.ngrok-free.app/chat-voice');
   
   try {
     final request = http.MultipartRequest('POST', url);

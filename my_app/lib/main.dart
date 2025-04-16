@@ -86,7 +86,11 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: languageProvider.supportedLanguages.values.toList(),
+          //supportedLocales: languageProvider.supportedLanguages.values.toList(),
+        supportedLocales: [
+         const Locale('en'), // English
+         const Locale('ar'), // Arabic
+         ],
           initialRoute: '/',
           routes: {
             '/': (context) => SplashScreen(),
