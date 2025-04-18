@@ -91,7 +91,7 @@ class UploadResponse {
 
 class UploadsService {
   // Update this to your real backend URL
-  static const String baseUrl = 'https://11a2-154-176-149-63.ngrok-free.app';
+  static const String baseUrl = 'https://446d-154-176-127-20.ngrok-free.app';
   static const int maxRetries = 2;
   
   // Use your specific Firebase Storage bucket

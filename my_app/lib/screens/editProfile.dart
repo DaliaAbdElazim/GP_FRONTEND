@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/firebase_authentication/firebase.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/base_screen.dart';
 import '../utils/session_manager.dart';
 import '../utils/api_service.dart';
  // Import the FirebaseAuthService
@@ -407,21 +407,23 @@ Future<void> _showChangePasswordDialog() async {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BaseScreen(
-      title: 'Edit Profile',
-      currentRoute: '/edit-profile',
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: _buildEditForm(context),
-              ),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Edit Profile'),
+    ),
+    drawer: CustomNavigationDrawer(currentRoute: '/edit-profile'),
+    body: _isLoading
+        ? Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: _buildEditForm(context),
             ),
-    );
-  }
+          ),
+  );
+}
 
   Widget _buildEditForm(BuildContext context) {
     return Form(

@@ -1,118 +1,220 @@
 import 'package:flutter/material.dart';
-import '../widgets/base_screen.dart';
+import 'package:my_app/front_end_helper/curved_clipper.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 
 class ContactScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BaseScreen(
-      title: 'Contact Us',
-      currentRoute: '/contact',
-      body: SingleChildScrollView(
-        // Wrap with SingleChildScrollView for scrolling
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Get In Touch',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        'We\'d love to hear from you. Please fill out the form below or contact us directly.',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ),
+ @override
+Widget build(BuildContext context) {
+  // Define the light grey color to be used throughout
+  final Color black = const Color.fromARGB(255, 7, 7, 7)!;
+  final Color redBorder = Color(0xFFBE0000);
+  
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: Color(0xFFBE0000),
+      title: Text('Contact Us', style: TextStyle(color: Colors.white)),
+      iconTheme: IconThemeData(color: Colors.white),
+    ),
+    drawer: CustomNavigationDrawer(currentRoute: '/contact'),
+    body: Stack(
+      children: [
+        // Top red bar that sits behind everything
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipPath(
+            clipper: CurvedBottomClipper(),
+            child: Container(
+              height: 20,
+              color: Color(0xFFBE0000),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 20.0, top: 30.0),
               ),
-              SizedBox(height: 20),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Subject',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.subject),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Message',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                  prefixIcon: Icon(Icons.message),
-                ),
-                maxLines: 5,
-              ),
-              SizedBox(height: 24),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Send contact form action
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Message sent!')));
-                  },
-                  child: Text('Send Message'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  ),
-                ),
-              ),
-              SizedBox(height: 30),
-              Text(
-                'Or Reach Us Directly',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              ListTile(
-                leading: Icon(Icons.email, color: Colors.blue),
-                title: Text('Email'),
-                subtitle: Text('support@example.com'),
-              ),
-              ListTile(
-                leading: Icon(Icons.phone, color: Colors.blue),
-                title: Text('Phone'),
-                subtitle: Text('+1 (123) 456-7890'),
-              ),
-              ListTile(
-                leading: Icon(Icons.location_on, color: Colors.blue),
-                title: Text('Address'),
-                subtitle: Text('123 App Street, City, Country'),
-              ),
-              // Remove any widgets that might be showing the yellow/black stripes
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+        
+        // Main content
+        SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: redBorder, width: 1.5),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Get In Touch',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: black,
+                          ),
+                        ),
+                       
+                        Text(
+                          'We\'d love to hear from you. Please fill out the form below or contact us directly.',
+                          style: TextStyle(fontSize: 16, color: black),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  style: TextStyle(color: black),
+                  decoration: InputDecoration(
+                    labelText: 'Name',
+                    labelStyle: TextStyle(color: black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 2),
+                    ),
+                    prefixIcon: Icon(Icons.person, color: black),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  style: TextStyle(color: black),
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(color: black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 2),
+                    ),
+                    prefixIcon: Icon(Icons.email, color: black),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  style: TextStyle(color: black),
+                  decoration: InputDecoration(
+                    labelText: 'Subject',
+                    labelStyle: TextStyle(color: black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 2),
+                    ),
+                    prefixIcon: Icon(Icons.subject, color: black),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  style: TextStyle(color: black),
+                  decoration: InputDecoration(
+                    labelText: 'Message',
+                    labelStyle: TextStyle(color: black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 2),
+                    ),
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Icons.message, color: black),
+                  ),
+                  maxLines: 5,
+                ),
+                SizedBox(height: 24),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Send contact form action
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Message sent!')),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: redBorder,
+                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: redBorder, width: 1.5),
+                      ),
+                    ),
+                    child: Text('Send Message', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+                SizedBox(height: 30),
+                Text(
+                  'Or Reach Us Directly',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: black,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: redBorder, width: 1.5),
+                  ),
+                  child: ListTile(
+                    leading: Icon(Icons.email, color: black),
+                    title: Text('Email', style: TextStyle(color: black)),
+                    subtitle: Text('support@example.com', style: TextStyle(color: black)),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: redBorder, width: 1.5),
+                  ),
+                  child: ListTile(
+                    leading: Icon(Icons.phone, color: black),
+                    title: Text('Phone', style: TextStyle(color: black)),
+                    subtitle: Text('+1 (123) 456-7890', style: TextStyle(color: black)),
+                  ),
+                ),
+                
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/front_end_helper/curved_clipper.dart';
 import 'package:my_app/services/img_upload_service.dart';
 import 'package:my_app/utils/session_manager.dart';
-import '../widgets/base_screen.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/services.dart';
@@ -22,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final UploadsService _uploadsService = UploadsService();
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploading = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -34,16 +35,45 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
     final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
-    
+
     if (isFirstLaunch) {
       // Mark as no longer first launch for future app opens
       await prefs.setBool('isFirstLaunch', false);
-      
+
       // Allow UI to load before showing dialog
       Future.delayed(Duration(milliseconds: 500), () {
         _showPermissionsDialog();
       });
     }
+  }
+
+  void _showCameraPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Camera Access Required'),
+          content: Text(
+            'To capture photos using your camera, you need to grant permission to access it.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _permissionService.openSettings();
+              },
+              child: Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showGalleryPermissionDialog() {
@@ -52,7 +82,9 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Gallery Access Required'),
-          content: Text('To select photos from your gallery, you need to grant permission to access your photos.'),
+          content: Text(
+            'To select photos from your gallery, you need to grant permission to access your photos.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -92,26 +124,26 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(height: 16),
               _buildPermissionItem(
                 Icons.camera_alt,
-                'Camera', 
-                'Access your camera for taking photos'
+                'Camera',
+                'Access your camera for taking photos',
               ),
               SizedBox(height: 8),
               _buildPermissionItem(
-                Icons.photo_library, 
-                'Photos', 
-                'Access your photo gallery to select images'
+                Icons.photo_library,
+                'Photos',
+                'Access your photo gallery to select images',
               ),
               SizedBox(height: 8),
               _buildPermissionItem(
-                Icons.notifications, 
-                'Notifications', 
-                'Get updates on your uploaded images and processing'
+                Icons.notifications,
+                'Notifications',
+                'Get updates on your uploaded images and processing',
               ),
               SizedBox(height: 8),
               _buildPermissionItem(
-                Icons.location_on, 
-                'Location', 
-                'Add location data to your uploaded images'
+                Icons.location_on,
+                'Location',
+                'Add location data to your uploaded images',
               ),
             ],
           ),
@@ -146,10 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
               Text(
                 description,
                 style: TextStyle(fontSize: 12, color: Colors.grey[700]),
@@ -160,29 +189,33 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-  
+
   // Request permissions sequentially
   Future<void> _requestPermissions() async {
     // Request camera permission
     await _permissionService.requestCameraPermission();
-    
+
     // Request gallery access permission
     await _permissionService.requestGalleryPermission();
-    
+
     // Request notification permission
-    final notificationGranted = await _permissionService.requestNotificationPermission();
-    
+    final notificationGranted =
+        await _permissionService.requestNotificationPermission();
+
     // Request location permission
-    final locationGranted = await _permissionService.requestLocationPermission();
-    
+    final locationGranted =
+        await _permissionService.requestLocationPermission();
+
     if (notificationGranted) {
       final prefs = await SharedPreferences.getInstance();
-      await _permissionService.sendFCMTokenToBackend(prefs.getString(SessionManager.KEY_USER_ID));
+      await _permissionService.sendFCMTokenToBackend(
+        prefs.getString(SessionManager.KEY_USER_ID),
+      );
     }
   }
 
-  // Pick a single image from gallery
-  Future<void> _pickSingleImage() async {
+  // Capture image using camera
+  Future<void> _captureImage() async {
     if (_selectedImages.length >= _maxImages) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Maximum $_maxImages images allowed')),
@@ -191,10 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      // For most cases, we can proceed directly with image_picker
-      // It will handle the permission request internally on most devices
+      // Use image_picker to capture image from camera
       final XFile? pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+        source: ImageSource.camera,
         imageQuality: 80, // Reduce image size/quality
       );
 
@@ -202,19 +234,19 @@ class _HomeScreenState extends State<HomeScreen> {
         // User canceled or permission denied
         return;
       }
-      
+
       setState(() {
         _selectedImages.add(File(pickedFile.path));
       });
     } on PlatformException catch (e) {
       print(e);
       // This exception might occur if there's a permission issue
-      if (e.code == 'photo_access_denied' || e.code == 'permission_denied') {
-        _showGalleryPermissionDialog();
+      if (e.code == 'camera_access_denied' || e.code == 'permission_denied') {
+        _showCameraPermissionDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error selecting image: ${e.message}'),
+            content: Text('Error capturing image: ${e.message}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -223,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
       print(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error selecting image: $e'),
+          content: Text('Error capturing image: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -233,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pick multiple images at once from gallery
   Future<void> _pickMultipleImages() async {
     int remainingSlots = _maxImages - _selectedImages.length;
-    
+
     if (remainingSlots <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Maximum $_maxImages images already selected')),
@@ -252,21 +284,26 @@ class _HomeScreenState extends State<HomeScreen> {
         // User canceled or permission denied
         return;
       }
-      
+
       // Only add up to the remaining slots
-      final filesToAdd = pickedFiles.length > remainingSlots 
-          ? pickedFiles.sublist(0, remainingSlots) 
-          : pickedFiles;
-          
+      final filesToAdd =
+          pickedFiles.length > remainingSlots
+              ? pickedFiles.sublist(0, remainingSlots)
+              : pickedFiles;
+
       setState(() {
         for (var file in filesToAdd) {
           _selectedImages.add(File(file.path));
         }
       });
-      
+
       if (pickedFiles.length > remainingSlots) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Only added $remainingSlots of ${pickedFiles.length} selected images (maximum limit)')),
+          SnackBar(
+            content: Text(
+              'Only added $remainingSlots of ${pickedFiles.length} selected images (maximum limit)',
+            ),
+          ),
         );
       }
     } on PlatformException catch (e) {
@@ -298,132 +335,148 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _confirmImages() async {
-  if (_selectedImages.length < _minImages) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please select at least $_minImages images')),
-    );
-    return;
-  }
+    if (_selectedImages.length < _minImages) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select at least $_minImages images')),
+      );
+      return;
+    }
 
-  setState(() {
-    _isUploading = true;
-  });
+    setState(() {
+      _isUploading = true;
+    });
 
-  try {
-    // Show a progress indicator dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text('Uploading images...'),
-              SizedBox(height: 10),
-              Text(
-                'Please wait while your images are being uploaded',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
+    try {
+      // Show a progress indicator dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Uploading images...'),
+                SizedBox(height: 10),
+                Text(
+                  'Please wait while your images are being uploaded',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      // Get user ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString(SessionManager.KEY_USER_ID);
+
+      if (userId == null) {
+        throw Exception('User ID not found');
+      }
+
+      // Get current location with logging
+      print('Getting current location...');
+      final location = await _uploadsService.getCurrentLocation();
+      print(
+        'Location obtained - Latitude: ${location.latitude}, Longitude: ${location.longitude}, Valid: ${location.isValid}',
+      );
+
+      // Upload images to backend
+      final uploadResponse = await _uploadsService.uploadImages(
+        userId: userId,
+        imageFiles: _selectedImages,
+        location: location,
+        isGuestUpload: false,
+      );
+
+      // Close progress dialog
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+
+      // Navigate to confirmation screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => ConfirmationScreen(
+                uploadResult: uploadResponse.success,
+                message: uploadResponse.message,
+                uploadedCount: _selectedImages.length,
               ),
-            ],
-          ),
-        );
-      },
-    );
-
-    // Get user ID from SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString(SessionManager.KEY_USER_ID);
-
-    if (userId == null) {
-      throw Exception('User ID not found');
-    }
-
-    // Get current location with logging
-    print('Getting current location...');
-    final location = await _uploadsService.getCurrentLocation();
-    print('Location obtained - Latitude: ${location.latitude}, Longitude: ${location.longitude}, Valid: ${location.isValid}');
-
-    // Upload images to backend
-    final uploadResponse = await _uploadsService.uploadImages(
-      userId: userId,
-      imageFiles: _selectedImages,
-      location: location,
-      isGuestUpload: false,
-    );
-
-    // Close progress dialog
-    if (Navigator.canPop(context)) {
-      Navigator.of(context).pop();
-    }
-
-    // Navigate to confirmation screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ConfirmationScreen(
-          uploadResult: uploadResponse.success,
-          message: uploadResponse.message,
-          uploadedCount: _selectedImages.length,
         ),
-      ),
-    );
+      );
 
-    // Clear selected images after successful upload
-    if (uploadResponse.success) {
+      // Clear selected images after successful upload
+      if (uploadResponse.success) {
+        setState(() {
+          _selectedImages.clear();
+        });
+      }
+    } catch (e) {
+      // Close progress dialog if it's showing
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+
+      print('Upload error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } finally {
       setState(() {
-        _selectedImages.clear();
+        _isUploading = false;
       });
     }
-  } catch (e) {
-    // Close progress dialog if it's showing
-    if (Navigator.canPop(context)) {
-      Navigator.of(context).pop();
-    }
-    
-    print('Upload error: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Upload failed: ${e.toString()}'),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 5),
-      ),
-    );
-  } finally {
-    setState(() {
-      _isUploading = false;
-    });
   }
-}
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        BaseScreen(
-          title: 'Home',
-          currentRoute: '/home',
-          body: Center(
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Home', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFFBE0000),
+        elevation: 0, 
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      drawer: CustomNavigationDrawer(currentRoute: '/home'),
+      floatingActionButton: FloatingActionButton(
+      onPressed: () {
+        // Navigate to the chatbot screen
+        Navigator.pushNamed(context, '/chatbot');
+      },
+      backgroundColor: Color(0xFFBE0000),
+      child: Image.asset(
+        'assets/images/CHATBOT-11.png',
+        
+        width: 70,
+        height: 70,
+        
+      )),
+      body: Stack(
+        children: [
+          // Main content
+          Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.home, size: 100, color: Colors.blue),
-                SizedBox(height: 20),
-                Text(
-                  'Home Screen',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                // Custom house icon in red
+                // Icon(assets.images, size: 100, color: Color(0xFFBE0000)),
+                Image.asset(
+                  'assets/images/home_icon.png',
+                  width: 100,
+                  height: 100,
                 ),
-                SizedBox(height: 20),
-                Text(
-                  'Welcome to the main screen of the application',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
-                SizedBox(height: 20),
-
+                SizedBox(height: 60), // Increased to make room for the red bar
                 // Image preview grid
                 if (_selectedImages.isNotEmpty) ...[
                   Container(
@@ -439,10 +492,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 100,
                               height: 100,
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
+                                border: Border.all(color: Color(0xFFBE0000)),
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              // Display the actual image
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: Image.file(
@@ -455,7 +507,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               right: 0,
                               top: 0,
                               child: IconButton(
-                                icon: Icon(Icons.close, color: Colors.red),
+                                icon: Icon(
+                                  Icons.close,
+                                  color: Color(0xFFBE0000),
+                                ),
                                 onPressed: () => _removeImage(index),
                               ),
                             ),
@@ -467,25 +522,59 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(height: 10),
                   Text(
                     '${_selectedImages.length} of $_maxImages images (min: $_minImages)',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Color(0xFFBE0000)),
                   ),
                   SizedBox(height: 20),
                 ],
 
-                // Gallery selection buttons
+                // Modified image capture/selection buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _pickSingleImage,
-                      icon: Icon(Icons.photo),
-                      label: Text('Add Image'),
+                      onPressed: _captureImage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFBE0000),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: Icon(Icons.add_a_photo, color: Colors.white),
+                      label: Text(
+                        'Add Image',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Roboto',
+                        ),
+                      ),
                     ),
                     SizedBox(width: 16),
                     ElevatedButton.icon(
                       onPressed: _pickMultipleImages,
-                      icon: Icon(Icons.photo_library),
-                      label: Text('Add Multiple'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFBE0000),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: Icon(Icons.collections, color: Colors.white),
+                      label: Text(
+                        'Add Multiple',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Roboto',
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -495,32 +584,55 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (_selectedImages.isNotEmpty && !_isUploading)
                   ElevatedButton(
                     onPressed: _confirmImages,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: Text('Confirm Images'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 20,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Confirm Images',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Roboto',
+                      ),
+                    ),
                   ),
 
                 // Show loading indicator during upload
                 if (_isUploading)
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFBE0000),
+                    ),
+                  ),
               ],
             ),
           ),
-        ),
-        
-        // Floating Action Button
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/chatbot');
-            },
-            backgroundColor: Colors.blue,
-            child: Icon(Icons.chat_bubble, color: Colors.white),
-            tooltip: 'Chat Assistant',
+
+          // Red bar with curved bottom right corner
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ClipPath(
+              clipper: CurvedBottomClipper(),
+              child: Container(
+                height: 20,
+                color: Color(0xFFBE0000),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 20.0, top: 30.0),
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -531,7 +643,7 @@ class ConfirmationScreen extends StatelessWidget {
   final int uploadedCount;
 
   const ConfirmationScreen({
-    Key? key, 
+    Key? key,
     required this.uploadResult,
     this.message = '',
     this.uploadedCount = 0,
@@ -549,16 +661,16 @@ class ConfirmationScreen extends StatelessWidget {
             children: [
               Icon(
                 uploadResult ? Icons.check_circle : Icons.error_outline,
-                color: uploadResult ? Colors.green : Colors.red, 
-                size: 80
+                color: uploadResult ? Colors.green : Colors.red,
+                size: 80,
               ),
               SizedBox(height: 20),
               Text(
                 uploadResult ? 'Upload Successful' : 'Upload Failed',
                 style: TextStyle(
-                  fontSize: 24, 
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: uploadResult ? Colors.green : Colors.red
+                  color: uploadResult ? Colors.green : Colors.red,
                 ),
               ),
               SizedBox(height: 10),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_app/front_end_helper/curved_clipper.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/base_screen.dart';
 import '../utils/session_manager.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -171,33 +172,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BaseScreen(
-      title: 'Profile',
-      currentRoute: '/profile',
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: EdgeInsets.all(16.0),
-              child: _isLoggedIn
-                  ? (_isAnonymous 
-                      ? _buildAnonymousProfile(context)
-                      : _buildLoggedInProfile(context))
-                  : _buildGuestProfile(context),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Profile', style: TextStyle(color: Colors.white)),
+      backgroundColor:Color(0xFFBE0000),
+      elevation: 0,
+      iconTheme: IconThemeData(color: Colors.white),
+    ),
+    drawer: CustomNavigationDrawer(currentRoute: '/profile'),
+    body: Stack(
+      children: [
+        // Curved red bar at the top
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipPath(
+            clipper: CurvedBottomClipper(),
+            child: Container(
+              height: 20,
+              color: Color(0xFFBE0000),
             ),
-    );
-  }
+          ),
+        ),
+        
+        // Main content
+        _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Space to push content below the red bar
+                SizedBox(height: 30),
+                
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(16.0),
+                    child: _isLoggedIn
+                      ? (_isAnonymous 
+                          ? _buildAnonymousProfile(context)
+                          : _buildLoggedInProfile(context))
+                      : _buildGuestProfile(context),
+                  ),
+                ),
+              ],
+            ),
+      ],
+    ),
+  );
+}
 
   Widget _buildLoggedInProfile(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(height: 20),
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: Colors.blue.shade100,
-          child: Icon(Icons.person, size: 80, color: Colors.blue),
+       CircleAvatar(
+          radius: 70, // Optional: controls size
+          backgroundColor: Colors.white, // or any color that fits
+          child: Image.asset(
+            'assets/images/user_icon.png',
+            width: 150,
+            height: 150,
+            fit: BoxFit.contain,
+          ),
         ),
         SizedBox(height: 20),
         Text(

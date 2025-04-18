@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/base_screen.dart';
 import '../utils/session_manager.dart';
 import '../utils/api_service.dart';
 
@@ -208,45 +208,47 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BaseScreen(
-      title: 'My Contributions',
-      currentRoute: '/contributions',
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _contributions.isEmpty
-              ? Center(
-                  child: Text(
-                    'No contributions yet',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: _contributions.length,
-                  itemBuilder: (context, index) {
-                    final contribution = _contributions[index];
-                    return Card(
-                      margin: EdgeInsets.only(bottom: 16),
-                      child: ListTile(
-                        title: Text(
-                          contribution['type'] ?? 'Unknown Type',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Date: ${contribution['date'] ?? 'Unknown'}'),
-                            Text('Location: ${contribution['location'] ?? 'Unknown'}'),
-                            Text('Status: ${contribution['status'] ?? 'Unknown'}'),
-                          ],
-                        ),
-                        trailing: Icon(Icons.chevron_right),
-                        onTap: () => _viewContributionDetails(contribution),
-                      ),
-                    );
-                  },
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('My Contributions'),
+    ),
+    drawer: CustomNavigationDrawer(currentRoute: '/contributions'),
+    body: _isLoading
+        ? Center(child: CircularProgressIndicator())
+        : _contributions.isEmpty
+            ? Center(
+                child: Text(
+                  'No contributions yet',
+                  style: TextStyle(fontSize: 18),
                 ),
-    );
-  }
+              )
+            : ListView.builder(
+                padding: EdgeInsets.all(16),
+                itemCount: _contributions.length,
+                itemBuilder: (context, index) {
+                  final contribution = _contributions[index];
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 16),
+                    child: ListTile(
+                      title: Text(
+                        contribution['type'] ?? 'Unknown Type',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Date: ${contribution['date'] ?? 'Unknown'}'),
+                          Text('Location: ${contribution['location'] ?? 'Unknown'}'),
+                          Text('Status: ${contribution['status'] ?? 'Unknown'}'),
+                        ],
+                      ),
+                      trailing: Icon(Icons.chevron_right),
+                      onTap: () => _viewContributionDetails(contribution),
+                    ),
+                  );
+                },
+              ),
+  );
+}
 }

@@ -13,14 +13,14 @@ class CustomNavigationDrawer extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
+            decoration: BoxDecoration(color: Color(0xFFBE0000)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: Colors.blue),
+                  child: Icon(Icons.person, size: 40, color:Color(0xFFBE0000)),
                 ),
                 SizedBox(height: 10),
                 Text(
@@ -32,7 +32,12 @@ class CustomNavigationDrawer extends StatelessWidget {
           ),
           _buildDrawerItem(
             context: context,
-            icon: Icons.home,
+            icon: Image.asset(
+              "assets/images/home_icon.png",
+              width: 24,
+              height: 24,
+              color: currentRoute == '/home' ? Color(0xFFBE0000) : Colors.grey,
+            ),
             title: 'Home',
             route: '/home',
             isSelected: currentRoute == '/home',
@@ -81,7 +86,7 @@ class CustomNavigationDrawer extends StatelessWidget {
           ),
           _buildDrawerItem(
             context: context,
-            icon: Icons.settings,
+            icon: Icons.notifications,
             title: 'Notification',
             route: '/notification',
             isSelected: currentRoute == '/notification',
@@ -111,8 +116,6 @@ class CustomNavigationDrawer extends StatelessWidget {
 
   void _handleLogout(BuildContext context) async {
     // Add logout logic here
-    // For example:
-    // AuthService.logout();
     await SessionManager.logout(context);
     // Optional: Show a confirmation dialog or snackbar
     ScaffoldMessenger.of(
@@ -124,17 +127,28 @@ class CustomNavigationDrawer extends StatelessWidget {
 
   Widget _buildDrawerItem({
     required BuildContext context,
-    required IconData icon,
+    required dynamic icon,  // Changed from IconData to dynamic
     required String title,
     required String route,
     required bool isSelected,
   }) {
+    // Create the appropriate leading widget based on icon type
+    Widget leadingIcon;
+    if (icon is IconData) {
+      leadingIcon = Icon(icon, color: isSelected ? Color(0xFFBE0000) : Colors.grey);
+    } else if (icon is Widget) {
+      leadingIcon = icon;  // Use the widget directly
+    } else {
+      // Fallback icon
+      leadingIcon = Icon(Icons.circle, color: isSelected ? Color(0xFFBE0000) : Colors.grey);
+    }
+
     return ListTile(
-      leading: Icon(icon, color: isSelected ? Colors.blue : Colors.grey),
+      leading: leadingIcon,
       title: Text(
         title,
         style: TextStyle(
-          color: isSelected ? Colors.blue : Colors.black,
+          color: isSelected ? Color(0xFFBE0000) : Colors.black,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),

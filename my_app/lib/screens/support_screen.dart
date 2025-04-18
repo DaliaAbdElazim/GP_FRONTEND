@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/base_screen.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 
 class SupportScreen extends StatelessWidget {
   final List<Map<String, dynamic>> faqList = [
@@ -32,9 +32,12 @@ class SupportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      title: 'Support',
-      currentRoute: '/support',
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Support'),
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      drawer: CustomNavigationDrawer(currentRoute: '/support'),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
         child: Column(

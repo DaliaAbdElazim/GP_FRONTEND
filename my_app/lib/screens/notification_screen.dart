@@ -4,8 +4,8 @@ import 'package:my_app/Model/notification_model.dart';
 import 'package:my_app/Repository/notification_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/services/notification_handler_service.dart';
+import 'package:my_app/widgets/navigation_drawer.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../widgets/base_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -39,14 +39,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
 
 
-  @override
+@override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        BaseScreen(
-          title: 'Notifications',
-          currentRoute: '/notification',
-          body: _notifications.isEmpty
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Notifications'),
+      ),
+      drawer: CustomNavigationDrawer(currentRoute: '/notification'),
+      body: Stack(
+        children: [
+          _notifications.isEmpty
               ? const Center(
                   child: Text(
                     'No notifications yet',
@@ -79,7 +81,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ),
                       onTap: () {
-                       // print("longitude "+notification.longitude+" "+notification.latitude);
                         if (notification.latitude != null && notification.longitude != null) {
                           _notificationHandler.openLocationInMaps(notification.latitude!, notification.longitude!);
                         } else {
@@ -89,18 +90,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     );
                   },
                 ),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton(
-            onPressed: _clearAllNotifications,
-            backgroundColor: Colors.red,
-            child: Icon(Icons.delete_sweep, color: Colors.white),
-            tooltip: 'Clear All Notifications',
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              onPressed: _clearAllNotifications,
+              backgroundColor: Colors.red,
+              child: Icon(Icons.delete_sweep, color: Colors.white),
+              tooltip: 'Clear All Notifications',
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

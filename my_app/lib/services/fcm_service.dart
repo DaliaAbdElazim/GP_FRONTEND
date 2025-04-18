@@ -145,7 +145,7 @@ class FCMService {
       print("######################################");
       final response = await http.post(
         Uri.parse(
-          'https://11a2-154-176-149-63.ngrok-free.app/active-users/update-location',
+          'https://446d-154-176-127-20.ngrok-free.app/active-users/update-location',
         ),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
