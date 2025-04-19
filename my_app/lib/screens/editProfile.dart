@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/firebase_authentication/firebase.dart';
+import 'package:my_app/front_end_helper/curved_clipper.dart';
 import 'package:my_app/widgets/navigation_drawer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/session_manager.dart';
-import '../utils/api_service.dart';
+import '../services/api_service.dart';
  // Import the FirebaseAuthService
 
 class EditProfileScreen extends StatefulWidget {
@@ -272,123 +273,6 @@ Future<void> _showChangePasswordDialog() async {
     },
   );
 }
-
-
-  // Change email dialog
-//  Future<void> _showChangeEmailDialog() async {
-//   _currentPasswordController.clear();
-//   _newEmailController.clear();
-  
-//   // Create a dedicated form key for the dialog
-//   final _emailDialogFormKey = GlobalKey<FormState>();
-
-//   return showDialog<void>(
-//     context: context,
-//     barrierDismissible: false,
-//     builder: (BuildContext dialogContext) {  // Use a separate context variable
-//       return AlertDialog(
-//         title: Text('Change Email'),
-//         content: SingleChildScrollView(
-//           child: Form(
-//             key: _emailDialogFormKey,  // Use the dedicated form key
-//             child: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               children: <Widget>[
-//                 TextFormField(
-//                   controller: _currentPasswordController,
-//                   decoration: InputDecoration(
-//                     labelText: 'Current Password',
-//                     border: OutlineInputBorder(),
-//                   ),
-//                   obscureText: true,
-//                   validator: (value) {
-//                     if (value == null || value.isEmpty) {
-//                       return 'Please enter your password';
-//                     }
-//                     return null;
-//                   },
-//                 ),
-//                 SizedBox(height: 16),
-//                 TextFormField(
-//                   controller: _newEmailController,
-//                   decoration: InputDecoration(
-//                     labelText: 'New Email',
-//                     border: OutlineInputBorder(),
-//                   ),
-//                   keyboardType: TextInputType.emailAddress,
-//                   validator: (value) {
-//                     if (value == null || value.isEmpty) {
-//                       return 'Please enter a new email';
-//                     }
-//                     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-//                       return 'Please enter a valid email';
-//                     }
-//                     return null;
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//         actions: <Widget>[
-//           TextButton(
-//             child: Text('Cancel'),
-//             onPressed: () {
-//               Navigator.of(dialogContext).pop();
-//             },
-//           ),
-//           TextButton(
-//             child: Text('Change'),
-//             onPressed: () async {
-//               // Validate form using the form key
-//               if (_emailDialogFormKey.currentState!.validate()) {
-//                 try {
-//                   Navigator.of(dialogContext).pop(); // Close dialog
-                  
-//                   // Show loading indicator
-//                   _showLoadingDialog('Changing email...');
-                  
-//                   // Change email using Firebase
-//                   bool success = await _authService.changeEmail(
-//                     _currentPasswordController.text,
-//                     _newEmailController.text,
-//                   );
-                  
-//                   if (success) {
-//                     // Update email in SharedPreferences and UI
-//                     final prefs = await SharedPreferences.getInstance();
-//                     await prefs.setString(SessionManager.KEY_EMAIL, _newEmailController.text);
-//                     setState(() {
-//                       _emailController.text = _newEmailController.text;
-//                     });
-                    
-//                     // Hide loading indicator and show success message
-//                     Navigator.of(context).pop();
-//                     _showMessage('Email changed successfully');
-//                   } else {
-//                     // Hide loading indicator
-//                     Navigator.of(context).pop();
-//                     _showMessage('Failed to change email');
-//                   }
-//                 } catch (e) {
-//                   // Hide loading indicator if showing
-//                   if (Navigator.of(context).canPop()) {
-//                     Navigator.of(context).pop();
-//                   }
-//                   _showMessage('Failed to change email: ${e.toString()}');
-//                 }
-//               }
-//             },
-//           ),
-//         ],
-//       );
-//     },
-//   );
-// }
-
-  // Forgot password / Reset password functionality
-
-
   void _showLoadingDialog(String message) {
     showDialog(
       context: context,
@@ -409,157 +293,241 @@ Future<void> _showChangePasswordDialog() async {
 
 @override
 Widget build(BuildContext context) {
+  // Define the colors to match the first design
+  final Color black = const Color.fromARGB(255, 7, 7, 7);
+  final Color redBorder = Color(0xFFBE0000);
+
   return Scaffold(
     appBar: AppBar(
-      title: Text('Edit Profile'),
+      backgroundColor: Color(0xFFBE0000),
+      title: Text('Edit Profile', style: TextStyle(color: Colors.white)),
+      iconTheme: IconThemeData(color: Colors.white),
     ),
     drawer: CustomNavigationDrawer(currentRoute: '/edit-profile'),
-    body: _isLoading
-        ? Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: _buildEditForm(context),
+    body: Stack(
+      children: [
+        // Top red bar that sits behind everything
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipPath(
+            clipper: CurvedBottomClipper(),
+            child: Container(
+              height: 20,
+              color: Color(0xFFBE0000),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 20.0, top: 30.0),
+              ),
             ),
           ),
+        ),
+        
+        // Main content
+        _isLoading
+          ? Center(child: CircularProgressIndicator(color: redBorder))
+          : SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: _buildEditForm(context, black, redBorder),
+              ),
+            ),
+      ],
+    ),
   );
 }
 
-  Widget _buildEditForm(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(height: 20),
-          CircleAvatar(
-            radius: 60,
-            backgroundColor: Colors.blue.shade100,
-            child: Icon(Icons.person, size: 80, color: Colors.blue),
+Widget _buildEditForm(BuildContext context, Color black, Color redBorder) {
+  return Form(
+    key: _formKey,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(height: 20),
+        CircleAvatar(
+          radius: 60, // Optional: controls size
+          backgroundColor: Colors.transparent, // or any color that fits
+          child: Image.asset(
+            'assets/images/user_icon.png',
+            width: 150,
+            height: 150,
+            fit: BoxFit.contain,
           ),
-          SizedBox(height: 30),
-          TextFormField(
-            controller: _fullNameController,
-            decoration: InputDecoration(
-              labelText: 'Full Name',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.person),
+        ),
+        SizedBox(height: 30),
+        TextFormField(
+          controller: _fullNameController,
+          style: TextStyle(color: black),
+          decoration: InputDecoration(
+            labelText: 'Full Name',
+            labelStyle: TextStyle(color: black),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter your name';
-              }
-              return null;
-            },
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: redBorder, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: redBorder, width: 2),
+            ),
+            prefixIcon: Icon(Icons.person, color: black),
           ),
-          SizedBox(height: 20),
-          // Email field with change button
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                    enabled: false, // Email is read-only
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter your name';
+            }
+            return null;
+          },
+        ),
+        SizedBox(height: 20),
+        // Email field with change button
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _emailController,
+                style: TextStyle(color: black),
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  labelStyle: TextStyle(color: black),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  keyboardType: TextInputType.emailAddress,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(color: redBorder, width: 1.5),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(color: redBorder, width: 2),
+                  ),
+                  prefixIcon: Icon(Icons.email, color: black),
+                  enabled: false, // Email is read-only
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ),
+            SizedBox(width: 10),
+            // ElevatedButton(
+            //   onPressed: _showChangeEmailDialog,
+            //   child: Text('Change'),
+            //   style: ElevatedButton.styleFrom(
+            //     minimumSize: Size(100, 56),
+            //   ),
+            // ),
+          ],
+        ),
+        SizedBox(height: 20),
+        TextFormField(
+          controller: _phoneController,
+          style: TextStyle(color: black),
+          decoration: InputDecoration(
+            labelText: 'Phone Number',
+            labelStyle: TextStyle(color: black),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: redBorder, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: redBorder, width: 2),
+            ),
+            prefixIcon: Icon(Icons.phone, color: black),
+          ),
+          keyboardType: TextInputType.phone,
+        ),
+        SizedBox(height: 30),
+        
+        // Password management section
+        Divider(color: redBorder.withOpacity(0.5)),
+        SizedBox(height: 10),
+        Text(
+          'Password Management',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: black),
+        ),
+        SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.lock),
+                label: Text('Change Password'),
+                onPressed: _showChangePasswordDialog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: redBorder,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: redBorder, width: 1.5),
+                  ),
                 ),
               ),
-              SizedBox(width: 10),
-              // ElevatedButton(
-              //   onPressed: _showChangeEmailDialog,
-              //   child: Text('Change'),
-              //   style: ElevatedButton.styleFrom(
-              //     minimumSize: Size(100, 56),
-              //   ),
-              // ),
-            ],
-          ),
-          SizedBox(height: 20),
-          TextFormField(
-            controller: _phoneController,
-            decoration: InputDecoration(
-              labelText: 'Phone Number',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.phone),
             ),
-            keyboardType: TextInputType.phone,
-          ),
-          SizedBox(height: 30),
-          
-          // Password management section
-          Divider(),
-          SizedBox(height: 10),
-          Text(
-            'Password Management',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  icon: Icon(Icons.lock),
-                  label: Text('Change Password'),
-                  onPressed: _showChangePasswordDialog,
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                  ),
-                ),
-              ),
-              SizedBox(width: 10),
-              // Expanded(
-              //   child: OutlinedButton.icon(
-              //     icon: Icon(Icons.password),
-              //     label: Text('Reset Password'),
-              //     onPressed: _showForgotPasswordDialog,
-              //     style: OutlinedButton.styleFrom(
-              //       padding: EdgeInsets.symmetric(vertical: 15),
-              //     ),
-              //   ),
-              // ),
-            ],
-          ),
-          SizedBox(height: 40),
-          
-          // Save/Cancel buttons
-          ElevatedButton(
-            onPressed: _isSaving ? null : _saveProfile,
-            child: _isSaving
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+            SizedBox(width: 10),
+            // Expanded(
+            //   child: OutlinedButton.icon(
+            //     icon: Icon(Icons.password),
+            //     label: Text('Reset Password'),
+            //     onPressed: _showForgotPasswordDialog,
+            //     style: OutlinedButton.styleFrom(
+            //       padding: EdgeInsets.symmetric(vertical: 15),
+            //     ),
+            //   ),
+            // ),
+          ],
+        ),
+        SizedBox(height: 40),
+        
+        // Save/Cancel buttons
+        ElevatedButton(
+          onPressed: _isSaving ? null : _saveProfile,
+          child: _isSaving
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
                       ),
-                      SizedBox(width: 10),
-                      Text('Saving...'),
-                    ],
-                  )
-                : Text('Save Changes'),
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              minimumSize: Size(double.infinity, 50),
+                    ),
+                    SizedBox(width: 10),
+                    Text('Saving...'),
+                  ],
+                )
+              : Text('Save Changes'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: redBorder,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+            minimumSize: Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: redBorder, width: 1.5),
             ),
           ),
-          SizedBox(height: 20),
-          TextButton(
-            onPressed: _isSaving ? null : () => Navigator.pop(context),
-            child: Text('Cancel'),
-            style: TextButton.styleFrom(
-              minimumSize: Size(double.infinity, 50),
+        ),
+        SizedBox(height: 20),
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: Text('Cancel', style: TextStyle(color: redBorder)),
+          style: TextButton.styleFrom(
+            minimumSize: Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }

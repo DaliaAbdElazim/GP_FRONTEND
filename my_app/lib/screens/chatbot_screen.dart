@@ -195,7 +195,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           if (!message.isUserMessage)
             CircleAvatar(
               radius: 30, // Optional: controls size
-              backgroundColor: Colors.white, // or any color that fits
+              backgroundColor: Colors.transparent, // or any color that fits
               child: Image.asset(
                 'assets/images/CHATBOT-11.png',
                 width: 50,

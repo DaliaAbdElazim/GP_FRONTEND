@@ -229,8 +229,8 @@ Widget build(BuildContext context) {
       children: [
         SizedBox(height: 20),
        CircleAvatar(
-          radius: 70, // Optional: controls size
-          backgroundColor: Colors.white, // or any color that fits
+          radius: 60, // Optional: controls size
+          backgroundColor: Colors.transparent, // or any color that fits
           child: Image.asset(
             'assets/images/user_icon.png',
             width: 150,
