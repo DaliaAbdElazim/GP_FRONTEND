@@ -3,3 +3,5 @@ android/key.properties
 ios/Runner/GoogleService-Info.plist
 lib/secrets.dart
 .env
+# Android
+android/app/google-services.json
