@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:my_app/front_end_helper/curved_clipper.dart';
 import 'package:my_app/services/api_service.dart';
 import 'package:my_app/utils/session_manager.dart';
 import 'package:my_app/widgets/navigation_drawer.dart';
@@ -147,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> sendUserDataToBackend(String? token) async {
     try {
       final response = await http.post(
-        Uri.parse("https://446d-154-176-127-20.ngrok-free.app/user/sign-in"),
+        Uri.parse("https://ec0e-154-176-127-20.ngrok-free.app/user/sign-in"),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
@@ -274,78 +275,139 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isFromAnonymous ? 'Sign in with Existing Account' : 'Login')
+Widget build(BuildContext context) {
+  // Define the colors to match Contact Us page
+  final Color black = const Color.fromARGB(255, 7, 7, 7);
+  final Color redBorder = Color(0xFFBE0000);
+
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: Color(0xFFBE0000),
+      title: Text(
+        _isFromAnonymous ? 'Sign in with Existing Account' : 'Login',
+        style: TextStyle(color: Colors.white)
       ),
-      drawer: CustomNavigationDrawer(currentRoute: LoginScreen.currentRoute),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_isFromAnonymous) ...[
-                Container(
-                  padding: EdgeInsets.all(16),
-                  margin: EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Link to Existing Account',
-                        style: TextStyle(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
-                        ),
+      iconTheme: IconThemeData(color: Colors.white),
+    ),
+    drawer: CustomNavigationDrawer(currentRoute: LoginScreen.currentRoute),
+    body: Stack(
+      children: [
+        // Top red curved bar
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipPath(
+            clipper: CurvedBottomClipper(),
+            child: Container(
+              height: 20,
+              color: Color(0xFFBE0000),
+            ),
+          ),
+        ),
+
+        // Main content
+        SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: 15),
+                if (_isFromAnonymous) ...[
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Link to Existing Account',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: black,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Sign in with your existing account to save your current progress.',
+                            style: TextStyle(fontSize: 16, color: black),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Sign in with your existing account to save your current progress.',
-                        style: TextStyle(color: Colors.grey.shade700),
-                      ),
-                    ],
+                    ),
                   ),
+                  SizedBox(height: 20),
+                ],
+                TextField(
+                  controller: _emailController,
+                  style: TextStyle(color: black),
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(color: black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 2),
+                    ),
+                    prefixIcon: Icon(Icons.email, color: black),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
                 ),
-              ],
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
+                SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  style: TextStyle(color: black),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: TextStyle(color: black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: redBorder, width: 2),
+                    ),
+                    prefixIcon: Icon(Icons.lock, color: black),
+                  ),
+                  obscureText: true,
                 ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                obscureText: true,
-              ),
-              if (_errorMessage != null) ...[
-                SizedBox(height: 10),
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red, fontSize: 14),
-                ),
-              ],
-              SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _signIn,
-                child:
-                  _isLoading
+                if (_errorMessage != null) ...[
+                  SizedBox(height: 10),
+                  Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                ],
+                SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _signIn,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: redBorder,
+                    padding: EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    disabledBackgroundColor: redBorder.withOpacity(0.6),
+                  ),
+                  child: _isLoading
                     ? SizedBox(
                         height: 20,
                         width: 20,
@@ -354,47 +416,55 @@ class _LoginScreenState extends State<LoginScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : Text(_isFromAnonymous ? 'Link Account' : 'Login'),
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 15),
+                    : Text(
+                        _isFromAnonymous ? 'Link Account' : 'Login',
+                        style: TextStyle(color: Colors.white),
+                      ),
                 ),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context, 
+                          '/registration',
+                          arguments: _isFromAnonymous ? {'fromAnonymous': true} : null,
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: redBorder,
+                      ),
+                      child: Text('Don\'t have an account? Register'),
+                    ),
+                    TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      style: TextButton.styleFrom(
+                        foregroundColor: redBorder,
+                      ),
+                      child: Text('Forgot Password?'),
+                    ),
+                  ],
+                ),
+                if (_isFromAnonymous) ...[
+                  SizedBox(height: 16),
                   TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(
-                        context, 
-                        '/registration',
-                        arguments: _isFromAnonymous ? {'fromAnonymous': true} : null,
-                      );
+                      Navigator.pop(context);
                     },
-                    child: Text('Don\'t have an account? Register'),
-                  ),
-                  TextButton(
-                    onPressed: _showForgotPasswordDialog,
-                    child: Text('Forgot Password?'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: black.withOpacity(0.6),
+                    ),
+                    child: Text('Continue as guest'),
                   ),
                 ],
-              ),
-              if (_isFromAnonymous) ...[
-                SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text('Continue as guest'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.grey,
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 }

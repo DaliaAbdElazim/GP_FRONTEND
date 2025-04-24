@@ -676,7 +676,7 @@ class ConfirmationScreen extends StatelessWidget {
               SizedBox(height: 10),
               if (uploadResult)
                 Text(
-                  'Successfully uploaded $uploadedCount images',
+                  'Successfully uploaded images',
                   style: TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),

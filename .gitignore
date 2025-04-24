@@ -1,0 +1,5 @@
+# Flutter secret files
+android/key.properties
+ios/Runner/GoogleService-Info.plist
+lib/secrets.dart
+.env

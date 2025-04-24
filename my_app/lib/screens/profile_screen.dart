@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _isLoggedIn = true;
             _isAnonymous = currentUser.isAnonymous;
             _userEmail = currentUser.email ?? 'No email provided';
-            
+
             if (_isAnonymous) {
               _userName = 'Guest User';
             } else {
@@ -100,9 +100,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Center(child: CircularProgressIndicator());
         },
       );
-      
+
       await SessionManager.logout(context);
-      
+
       // Navigator pop is handled in the SessionManager.logout method
     } catch (e) {
       // Close loading dialog if still showing
@@ -126,12 +126,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Center(child: CircularProgressIndicator());
         },
       );
-      
+
       bool success = await SessionManager.loginAnonymously();
-      
+
       // Close loading dialog
       Navigator.of(context, rootNavigator: true).pop();
-      
+
       if (success) {
         // Refresh the profile screen
         _checkLoginStatus();
@@ -155,80 +155,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Navigate to login screen for account linking
   void _navigateToLogin(BuildContext context) {
     // Pass a parameter to indicate we're coming from an anonymous account
-    Navigator.pushNamed(
-      context, 
-      '/login',
-      arguments: {'fromAnonymous': true},
-    );
+    Navigator.pushNamed(context, '/login', arguments: {'fromAnonymous': true});
   }
 
   // Navigate to registration screen for account creation
   void _navigateToRegistration(BuildContext context) {
     // Pass a parameter to indicate we're coming from an anonymous account
     Navigator.pushNamed(
-      context, 
+      context,
       '/registration',
       arguments: {'fromAnonymous': true},
     );
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('Profile', style: TextStyle(color: Colors.white)),
-      backgroundColor:Color(0xFFBE0000),
-      elevation: 0,
-      iconTheme: IconThemeData(color: Colors.white),
-    ),
-    drawer: CustomNavigationDrawer(currentRoute: '/profile'),
-    body: Stack(
-      children: [
-        // Curved red bar at the top
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: ClipPath(
-            clipper: CurvedBottomClipper(),
-            child: Container(
-              height: 20,
-              color: Color(0xFFBE0000),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Profile', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFFBE0000),
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      drawer: CustomNavigationDrawer(currentRoute: '/profile'),
+      body: Stack(
+        children: [
+          // Curved red bar at the top
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ClipPath(
+              clipper: CurvedBottomClipper(),
+              child: Container(height: 20, color: Color(0xFFBE0000)),
             ),
           ),
-        ),
-        
-        // Main content
-        _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Space to push content below the red bar
-                SizedBox(height: 30),
-                
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(16.0),
-                    child: _isLoggedIn
-                      ? (_isAnonymous 
-                          ? _buildAnonymousProfile(context)
-                          : _buildLoggedInProfile(context))
-                      : _buildGuestProfile(context),
+
+          // Main content
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : Column(
+                children: [
+                  // Space to push content below the red bar
+                  SizedBox(height: 30),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16.0),
+                      child:
+                          _isLoggedIn
+                              ? (_isAnonymous
+                                  ? _buildAnonymousProfile(context)
+                                  : _buildLoggedInProfile(context))
+                              : buildGuestProfile(context),
+                    ),
                   ),
-                ),
-              ],
-            ),
-      ],
-    ),
-  );
-}
+                ],
+              ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildLoggedInProfile(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(height: 20),
-       CircleAvatar(
+        CircleAvatar(
           radius: 60, // Optional: controls size
           backgroundColor: Colors.transparent, // or any color that fits
           child: Image.asset(
@@ -254,7 +248,7 @@ Widget build(BuildContext context) {
             Navigator.pushNamed(context, '/edit-profile');
           },
         ),
-       // Divider(),
+        // Divider(),
         // ListTile(
         //   leading: Icon(Icons.lock),
         //   title: Text('Change Password'),
@@ -288,14 +282,22 @@ Widget build(BuildContext context) {
         CircleAvatar(
           radius: 60,
           backgroundColor: Colors.amber.shade100,
-          child: Icon(Icons.person, size: 80, color: Colors.amber),
+          child: Image.asset(
+            'assets/images/user_icon.png',
+            width: 150,
+            height: 150,
+            fit: BoxFit.contain,
+          ),
         ),
         SizedBox(height: 20),
         Text(
           'Guest User',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        Text('Anonymous account', style: TextStyle(fontSize: 16, color: Colors.grey)),
+        Text(
+          'Anonymous account',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
         SizedBox(height: 30),
         Container(
           padding: EdgeInsets.all(16),
@@ -344,64 +346,128 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildGuestProfile(BuildContext context) {
+  Widget buildGuestProfile(BuildContext context) {
+    // Define the colors to match Contact Us page
+    final Color black = const Color.fromARGB(255, 7, 7, 7);
+    final Color redBorder = Color(0xFFBE0000);
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(height: 40),
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: Colors.grey.shade200,
-          child: Icon(Icons.person_outline, size: 80, color: Colors.grey),
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: redBorder, width: 2),
+            color: Colors.white,
+          ),
+          padding: EdgeInsets.all(8),
+          child: CircleAvatar(
+            radius: 60,
+            backgroundColor: Colors.grey.shade200,
+            child: Image.asset(
+              'assets/images/user_icon.png',
+              width: 150,
+              height: 150,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
         SizedBox(height: 30),
         Text(
           'Welcome',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: black,
+          ),
         ),
         SizedBox(height: 10),
         Text(
           'Create an account or continue as guest',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+          style: TextStyle(fontSize: 16, color: black.withOpacity(0.7)),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 50),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pushNamed(context, '/login');
-          },
-          child: Text('Login'),
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-            minimumSize: Size(double.infinity, 50),
+        SizedBox(height: 40),
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: redBorder, width: 1.5),
           ),
-        ),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pushNamed(context, '/registration');
-          },
-          child: Text('Register'),
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-            minimumSize: Size(double.infinity, 50),
-          ),
-        ),
-        SizedBox(height: 20),
-        OutlinedButton(
-          onPressed: () => _loginAsGuest(context),
-          child: Text('Continue as Guest'),
-          style: OutlinedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-            minimumSize: Size(double.infinity, 50),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/login');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: redBorder,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    minimumSize: Size(double.infinity, 50),
+                  ),
+                  child: Text('Login', style: TextStyle(color: Colors.white)),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/registration');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: redBorder,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: redBorder, width: 1.5),
+                    ),
+                    minimumSize: Size(double.infinity, 50),
+                  ),
+                  child: Text(
+                    'Register',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                SizedBox(height: 20),
+                OutlinedButton(
+                  onPressed: () => _loginAsGuest(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    minimumSize: Size(double.infinity, 50),
+                    side: BorderSide(color: redBorder, width: 1.5),
+                    foregroundColor: redBorder,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text('Continue as Guest'),
+                ),
+              ],
+            ),
           ),
         ),
         SizedBox(height: 30),
-        Text(
-          'Sign in to access your personalized profile, save preferences, and more.',
-          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          textAlign: TextAlign.center,
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: redBorder, width: 1.5),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(15),
+            child: Text(
+              'Sign in to access your personalized profile, save preferences, and more.',
+              style: TextStyle(fontSize: 14, color: black.withOpacity(0.7)),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ),
       ],
     );

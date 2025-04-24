@@ -554,7 +554,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   // API call for text messages
   Future<ApiResponse> fetchChatTextResponse(String message) async {
     final url = Uri.parse(
-      'https://7ad9-34-58-161-132.ngrok-free.app/chat-text',
+      'https://35b7-34-172-214-193.ngrok-free.app/chat-text',
     );
 
     try {
@@ -583,7 +583,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<ApiResponse> fetchChatVoiceResponse(String audioFilePath) async {
     final url = Uri.parse(
-      'https://7ad9-34-58-161-132.ngrok-free.app/chat-voice',
+      'https://35b7-34-172-214-193.ngrok-free.app/chat-voice',
     );
 
     try {
